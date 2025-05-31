@@ -115,10 +115,18 @@ _bump:
 	fi; \
 	echo -e "${GREEN}✓ Version bumped to $$NEW_VERSION${NC}"
 
-tag: ## Create a git tag for the current version
+tag: ## Create and push a git tag for the current version
 	@echo -e "${BLUE}Creating tag v$(CURRENT_VERSION)...${NC}"
 	git tag -a v$(CURRENT_VERSION) -m "Release v$(CURRENT_VERSION)"
-	@echo -e "${GREEN}✓ Tag created. Push with: git push origin v$(CURRENT_VERSION)${NC}"
+	@echo -e "${GREEN}✓ Tag created${NC}"
+	@echo -e "${BLUE}Pushing tag to origin...${NC}"
+	git push origin v$(CURRENT_VERSION)
+	@echo -e "${GREEN}✓ Tag pushed successfully${NC}"
+
+index-module: ## Index the module in Go proxy
+	@echo -e "${BLUE}Indexing module $(PACKAGE_NAME)@v$(CURRENT_VERSION) in Go proxy...${NC}"
+	GOPROXY=proxy.golang.org go list -m $(PACKAGE_NAME)@v$(CURRENT_VERSION)
+	@echo -e "${GREEN}✓ Module indexed successfully${NC}"
 
 dev: install ## Set up development environment
 	@echo -e "${GREEN}✓ Development environment ready!${NC}"
@@ -134,16 +142,19 @@ release: pre-commit check-version ## Full release process
 	@echo -e "${BLUE}Starting release process for version $(CURRENT_VERSION)...${NC}"
 	@echo -e "${YELLOW}This will:${NC}"
 	@echo "  1. Run all tests"
-	@echo "  2. Create a git tag"
-	@echo "  3. Push the tag to trigger release"
+	@echo "  2. Create and push a git tag"
+	@echo "  3. Index the module in Go proxy"
 	@read -p "Continue? (y/N) " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		$(MAKE) tag; \
-		echo -e "${YELLOW}Tag created. To complete the release:${NC}"; \
-		echo "  1. git push origin v$(CURRENT_VERSION)"; \
-		echo "  2. Create a release on GitHub"; \
-		echo "  3. The Go module proxy will automatically index the new version"; \
+		@echo -e "${BLUE}Waiting for tag to be available...${NC}"; \
+		sleep 5; \
+		$(MAKE) index-module; \
+		echo -e "${GREEN}✓ Release complete!${NC}"; \
+		echo -e "${YELLOW}Next steps:${NC}"; \
+		echo "  1. Create a release on GitHub for v$(CURRENT_VERSION)"; \
+		echo "  2. The module is now available at $(PACKAGE_NAME)@v$(CURRENT_VERSION)"; \
 	fi
 
 install-tools: ## Install development tools
