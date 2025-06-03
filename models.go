@@ -4,13 +4,6 @@ import (
 	"time"
 )
 
-type BoxTemplate string
-
-const (
-	BoxTemplateBasic BoxTemplate = "basic"
-	BoxTemplatePro   BoxTemplate = "pro"
-)
-
 type BoxStatus string
 
 const (
@@ -66,10 +59,10 @@ type CommandResult struct {
 }
 
 type BoxConfig struct {
-	Template   BoxTemplate       `json:"template,omitempty"`
-	TemplateID string            `json:"template_id,omitempty"`
-	Timeout    int               `json:"timeout,omitempty"` // seconds
-	Metadata   map[string]string `json:"metadata,omitempty"`
+	CPU      int               `json:"cpu,omitempty"`     // Number of CPU cores
+	MibRAM   int               `json:"mib_ram,omitempty"` // RAM in MiB
+	Timeout  int               `json:"timeout,omitempty"` // seconds
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 type CommandOptions struct {
@@ -87,21 +80,12 @@ type Organization struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-type BoxTemplateInfo struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	CPU         int       `json:"cpu"`
-	RAM         int       `json:"ram"`
-	CostPerHour float64   `json:"cost_per_hour"`
-	InsertedAt  time.Time `json:"inserted_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
 // API request/response types
 
 type createBoxRequest struct {
-	BoxTemplate string            `json:"box_template,omitempty"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
+	CPU      int               `json:"cpu,omitempty"`
+	MibRAM   int               `json:"mib_ram,omitempty"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 type createBoxResponse struct {

@@ -17,8 +17,10 @@ func main() {
 	ctx := context.Background()
 
 	// Create box with custom configuration
+	// Since we're running Python scripts, we might want specific resources
 	config := &tavor.BoxConfig{
-		Template: tavor.BoxTemplateBasic,
+		CPU:    1,   // 1 CPU cores
+		MibRAM: 256, // 256 MiB RAM for Python runtime
 		Metadata: map[string]string{
 			"project": "demo",
 			"type":    "python",

@@ -24,6 +24,9 @@ func main() {
 
 	// Example 5: Error handling
 	errorHandlingExample()
+
+	// Example 6: Resource allocation strategies
+	resourceAllocationExample()
 }
 
 func basicExample() {
@@ -38,6 +41,7 @@ func basicExample() {
 	ctx := context.Background()
 
 	// Use WithSandbox for automatic cleanup
+	// Using nil config (defaults: 1 CPU, 1024 MiB RAM)
 	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
 		// Run a simple command
 		result, err := box.Run(ctx, "echo 'Hello from Tavor!'", nil)
@@ -73,8 +77,10 @@ func manualExample() {
 	ctx := context.Background()
 
 	// Create box with custom configuration
+	// Python workloads benefit from more memory
 	config := &tavor.BoxConfig{
-		Template: tavor.BoxTemplateBasic,
+		CPU:    1,
+		MibRAM: 2048,
 		Metadata: map[string]string{
 			"project": "demo",
 			"type":    "python",
@@ -131,6 +137,12 @@ func streamingExample() {
 
 	ctx := context.Background()
 
+	// For streaming operations, we might want slightly less memory
+	config := &tavor.BoxConfig{
+		CPU:    1,   // Default CPU is fine for simple streaming
+		MibRAM: 512, // 512 MiB RAM to handle buffering
+	}
+
 	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
 		// Run a command with streaming output
 		opts := &tavor.CommandOptions{
@@ -153,7 +165,7 @@ echo "Task completed!"
 
 		_, err := box.Run(ctx, fmt.Sprintf("bash -c '%s'", script), opts)
 		return err
-	}, nil)
+	}, config)
 	if err != nil {
 		log.Printf("Error: %v", err)
 	}
@@ -169,7 +181,16 @@ func concurrentExample() {
 
 	ctx := context.Background()
 
-	box, err := client.CreateBox(ctx, nil)
+	// For concurrent operations, allocate more resources
+	config := &tavor.BoxConfig{
+		CPU:    1,   // 2 full CPU cores for parallel execution
+		MibRAM: 512, // 512 MiB RAM
+		Metadata: map[string]string{
+			"purpose": "concurrent-demo",
+		},
+	}
+
+	box, err := client.CreateBox(ctx, config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -226,6 +247,7 @@ func errorHandlingExample() {
 
 	ctx := context.Background()
 
+	// Error handling doesn't need extra resources - use defaults
 	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
 		// Command that will fail
 		result, err := box.Run(ctx, "exit 42", nil)
@@ -285,5 +307,124 @@ func listBoxesExample() {
 		if len(box.Metadata) > 0 {
 			fmt.Printf("  Metadata: %v\n", box.Metadata)
 		}
+	}
+}
+
+func resourceAllocationExample() {
+	fmt.Println("\n=== Resource Allocation Strategies ===")
+
+	client, err := tavor.NewClient("")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx := context.Background()
+
+	// Strategy 1: Minimal resources for simple tasks
+	fmt.Println("\n1. Minimal Configuration (defaults)")
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+		// Default: 1 CPU, 1024 MiB RAM
+		result, err := box.Run(ctx, "echo 'Minimal resources work great for simple tasks!'", nil)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("   Output: %s", result.Stdout)
+		return nil
+	}, nil)
+	if err != nil {
+		log.Printf("Error: %v", err)
+	}
+
+	// Strategy 2: Moderate resources for typical workloads
+	fmt.Println("\n2. Moderate Configuration")
+	moderateConfig := &tavor.BoxConfig{
+		CPU:    1,
+		MibRAM: 512,
+		Metadata: map[string]string{
+			"tier": "moderate",
+		},
+	}
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+		// Good for most scripting tasks
+		result, err := box.Run(ctx, "free -m | grep Mem", nil)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("   Memory info: %s", result.Stdout)
+		return nil
+	}, moderateConfig)
+	if err != nil {
+		log.Printf("Error: %v", err)
+	}
+
+	// Strategy 3: High resources for intensive workloads
+	fmt.Println("\n3. High Performance Configuration")
+	highPerfConfig := &tavor.BoxConfig{
+		CPU:    2,    // 2 CPU cores
+		MibRAM: 2048, // 2 GiB RAM
+		Metadata: map[string]string{
+			"tier":     "performance",
+			"use-case": "data-processing",
+		},
+	}
+
+	box, err := client.CreateBox(ctx, highPerfConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer box.Stop(ctx)
+
+	if err := box.WaitUntilReady(ctx); err != nil {
+		log.Fatal(err)
+	}
+
+	// Show system resources
+	result, err := box.Run(ctx, "nproc", nil)
+	if err == nil {
+		fmt.Printf("   CPU cores available: %s", result.Stdout)
+	}
+
+	result, err = box.Run(ctx, "free -m | grep Mem | awk '{print $2}'", nil)
+	if err == nil {
+		fmt.Printf("   Total memory (MiB): %s", result.Stdout)
+	}
+
+	// Strategy 4: Dynamic resource allocation based on workload
+	fmt.Println("\n4. Dynamic Resource Selection")
+	workloadTypes := []struct {
+		name   string
+		config *tavor.BoxConfig
+		desc   string
+	}{
+		{
+			name: "web-scraping",
+			config: &tavor.BoxConfig{
+				CPU:    1,   // Minimal CPU
+				MibRAM: 256, // Moderate RAM for DOM parsing
+			},
+			desc: "Light CPU, moderate RAM",
+		},
+		{
+			name: "ml-inference",
+			config: &tavor.BoxConfig{
+				CPU:    2,    // Multiple cores for parallel processing
+				MibRAM: 4096, // 4 GiB RAM for models
+			},
+			desc: "High CPU and RAM",
+		},
+		{
+			name: "build-tasks",
+			config: &tavor.BoxConfig{
+				CPU:    1,    // Single core is often sufficient
+				MibRAM: 1024, // 1 GiB RAM for compilation
+			},
+			desc: "Balanced resources",
+		},
+	}
+
+	for _, wt := range workloadTypes {
+		fmt.Printf("\n   Workload '%s' (%s):\n", wt.name, wt.desc)
+		fmt.Printf("   - CPU: %d cores\n", wt.config.CPU)
+		fmt.Printf("   - RAM: %d MiB\n", wt.config.MibRAM)
 	}
 }

@@ -148,7 +148,7 @@ release: pre-commit check-version ## Full release process
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		$(MAKE) tag; \
-		@echo -e "${BLUE}Waiting for tag to be available...${NC}"; \
+		echo -e "${BLUE}Waiting for tag to be available...${NC}"; \
 		sleep 5; \
 		$(MAKE) index-module; \
 		echo -e "${GREEN}✓ Release complete!${NC}"; \

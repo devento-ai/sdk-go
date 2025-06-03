@@ -17,7 +17,7 @@ import (
     "context"
     "fmt"
     "log"
-    
+
     tavor "github.com/tavor-dev/sdk-go"
 )
 
@@ -27,20 +27,20 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    
+
     ctx := context.Background()
-    
+
     // Use WithSandbox for automatic cleanup
     err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
         result, err := box.Run(ctx, "echo 'Hello from Tavor!'", nil)
         if err != nil {
             return err
         }
-        
+
         fmt.Println(result.Stdout)
         return nil
     }, nil)
-    
+
     if err != nil {
         log.Fatal(err)
     }
@@ -52,11 +52,13 @@ func main() {
 The SDK requires an API key for authentication. You can provide it in two ways:
 
 1. **Environment Variable** (recommended):
+
    ```bash
    export TAVOR_API_KEY="sk-tavor-xxx"
    ```
 
 2. **Direct Parameter**:
+
    ```go
    client, err := tavor.NewClient("sk-tavor-xxx")
    ```
@@ -69,7 +71,7 @@ The SDK requires an API key for authentication. You can provide it in two ways:
 httpClient := &http.Client{
     Timeout: 60 * time.Second,
 }
-client, err := tavor.NewClient("", 
+client, err := tavor.NewClient("",
     tavor.WithHTTPClient(httpClient),
     tavor.WithBaseURL("https://custom.api.tavor.dev"),
     tavor.WithDebug(true),
@@ -101,8 +103,9 @@ client, err := tavor.NewClient("", tavor.WithLogger(customLogger))
 ### Environment Variables
 
 - `TAVOR_API_KEY` - API key for authentication
-- `TAVOR_BASE_URL` - Base URL for API (defaults to https://api.tavor.dev)
-- `TAVOR_BOX_TEMPLATE` - Default box template (basic, pro)
+- `TAVOR_BASE_URL` - Base URL for API (defaults to <https://api.tavor.dev>)
+- `TAVOR_BOX_CPU` - Default CPU cores (e.g., 1, 2, integers only)
+- `TAVOR_BOX_MIB_RAM` - Default RAM in MiB (e.g., 128, 256, 512, 1024, 2048)
 - `TAVOR_BOX_TIMEOUT` - Default box timeout in seconds
 
 ## Usage Examples
@@ -138,7 +141,7 @@ err := client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) e
     if err != nil {
         return err
     }
-    
+
     fmt.Println(result.Stdout)
     return nil
 }, nil)
@@ -147,9 +150,18 @@ err := client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) e
 ### Custom Box Configuration
 
 ```go
+// Option 1: Use defaults (1 CPU, 1024 MiB RAM)
+box, err := client.CreateBox(ctx, nil)
+if err != nil {
+    log.Fatal(err)
+}
+defer box.Stop(ctx)
+
+// Option 2: Specify custom resources
 config := &tavor.BoxConfig{
-    Template: tavor.BoxTemplatePro,  // Use a larger box
-    Timeout:  3600,                   // 1 hour
+    CPU:     2,    // 2 CPU cores
+    MibRAM:  2048, // 2 GiB RAM
+    Timeout: 3600, // 1 hour
     Metadata: map[string]string{
         "project": "data-analysis",
         "user":    "john.doe",
@@ -278,18 +290,36 @@ if err != nil {
 }
 ```
 
-## Box Templates
+## Resource Configuration
 
-Tavor provides predefined box templates:
+Tavor allows you to configure CPU and RAM resources for your boxes:
 
-- `tavor.BoxTemplateBasic` - Standard resources for most tasks
-- `tavor.BoxTemplatePro` - Enhanced resources for demanding workloads
+### Default Resources
 
-You can also specify a custom template ID:
+If you don't specify resources, boxes are created with minimal defaults:
+
+- CPU: 1 core
+- RAM: 1 GiB (1024 MiB)
+
+### Common Resource Configurations
 
 ```go
-config := &tavor.BoxConfig{
-    TemplateID: "boxt-custom-gpu-enabled",
+// Standard (defaults) - for typical workloads
+standard := &tavor.BoxConfig{
+    CPU:    1,    // 1 CPU core
+    MibRAM: 1024, // 1024 MiB RAM
+}
+
+// Performance - for demanding tasks
+performance := &tavor.BoxConfig{
+    CPU:    2,    // 2 CPU cores
+    MibRAM: 2048, // 2 GiB RAM
+}
+
+// High Memory - for data processing
+highMemory := &tavor.BoxConfig{
+    CPU:    1,    // 1 CPU core
+    MibRAM: 2048, // 2 GiB RAM
 }
 ```
 
@@ -318,10 +348,10 @@ config := &tavor.BoxConfig{
 
 ```go
 type BoxConfig struct {
-    Template   BoxTemplate       // Predefined template
-    TemplateID string            // Custom template ID
-    Timeout    int               // Timeout in seconds
-    Metadata   map[string]string // Custom metadata
+    CPU      int               // Number of CPU cores (e.g., 1, 2)
+    MibRAM   int               // RAM in MiB (e.g., 128, 256, 512, 1024)
+    Timeout  int               // Timeout in seconds
+    Metadata map[string]string // Custom metadata
 }
 
 type CommandOptions struct {
@@ -353,3 +383,4 @@ type CommandResult struct {
 ## License
 
 MIT License - see LICENSE file for details
+

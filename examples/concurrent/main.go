@@ -16,7 +16,19 @@ func main() {
 
 	ctx := context.Background()
 
-	box, err := client.CreateBox(ctx, nil)
+	// Example 1: Minimal usage - relies on defaults (1 CPU, 1024 MiB RAM)
+	// box, err := client.CreateBox(ctx, nil)
+
+	// Example 2: Explicit resource specification for concurrent workloads
+	// Using more resources since we're running multiple commands concurrently
+	config := &tavor.BoxConfig{
+		CPU:    2,   // 2 CPU cores for better concurrent performance
+		MibRAM: 512, // 512 MiB RAM
+		Metadata: map[string]string{
+			"purpose": "concurrent-commands",
+		},
+	}
+	box, err := client.CreateBox(ctx, config)
 	if err != nil {
 		log.Fatal(err)
 	}

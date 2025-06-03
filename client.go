@@ -88,12 +88,6 @@ func (c *Client) CreateBox(ctx context.Context, config *BoxConfig) (*BoxHandle, 
 		config = &BoxConfig{}
 	}
 
-	if config.Template == "" && config.TemplateID == "" {
-		if envTemplate := os.Getenv("TAVOR_BOX_TEMPLATE"); envTemplate != "" {
-			config.Template = BoxTemplate(envTemplate)
-		}
-	}
-
 	if config.Timeout == 0 {
 		if envTimeout := os.Getenv("TAVOR_BOX_TIMEOUT"); envTimeout != "" {
 			if timeout, err := strconv.Atoi(envTimeout); err == nil {
@@ -104,20 +98,8 @@ func (c *Client) CreateBox(ctx context.Context, config *BoxConfig) (*BoxHandle, 
 
 	req := createBoxRequest{
 		Metadata: config.Metadata,
-	}
-
-	if config.TemplateID != "" {
-		req.BoxTemplate = config.TemplateID
-	} else if config.Template != "" {
-		switch config.Template {
-		case BoxTemplateBasic:
-			req.BoxTemplate = "Basic"
-		case BoxTemplatePro:
-			req.BoxTemplate = "Pro"
-		}
-	} else {
-		// default to Basic template if none specified
-		req.BoxTemplate = "Basic"
+		CPU:      config.CPU,
+		MibRAM:   config.MibRAM,
 	}
 
 	body, err := json.Marshal(req)

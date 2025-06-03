@@ -132,8 +132,8 @@ func TestErrorTypes(t *testing.T) {
 		},
 		{
 			name:     "ValidationError",
-			err:      NewValidationError("template", "Invalid template name"),
-			wantMsg:  "Validation error on field 'template': Invalid template name",
+			err:      NewValidationError("cpu", "Invalid CPU value"),
+			wantMsg:  "Validation error on field 'cpu': Invalid CPU value",
 			wantCode: 400,
 		},
 		{
@@ -166,10 +166,8 @@ func TestErrorTypes(t *testing.T) {
 }
 
 func TestBoxConfig(t *testing.T) {
-	originalTemplate := os.Getenv("TAVOR_BOX_TEMPLATE")
 	originalTimeout := os.Getenv("TAVOR_BOX_TIMEOUT")
 	defer func() {
-		os.Setenv("TAVOR_BOX_TEMPLATE", originalTemplate)
 		os.Setenv("TAVOR_BOX_TIMEOUT", originalTimeout)
 	}()
 
@@ -180,32 +178,81 @@ func TestBoxConfig(t *testing.T) {
 
 	ctx := context.Background()
 
-	os.Setenv("TAVOR_BOX_TEMPLATE", "pro")
-	os.Setenv("TAVOR_BOX_TIMEOUT", "120")
-
-	// This would normally create a box, but we can't test without a real API
-	// Just verify the config is properly constructed
-	config := &BoxConfig{}
-
-	if config.Template == "" && os.Getenv("TAVOR_BOX_TEMPLATE") != "" {
-		config.Template = BoxTemplate(os.Getenv("TAVOR_BOX_TEMPLATE"))
-	}
-
-	if config.Template != BoxTemplatePro {
-		t.Errorf("Expected template from env to be 'pro', got %v", config.Template)
-	}
-
-	config = &BoxConfig{
-		Template: BoxTemplateBasic,
-		Metadata: map[string]string{
-			"test": "value",
-			"env":  "testing",
+	// Test new CPU and RAM parameters
+	tests := []struct {
+		name         string
+		config       *BoxConfig
+		wantCPU      int
+		wantMibRAM   int
+		wantMetadata int
+	}{
+		{
+			name: "With CPU and RAM",
+			config: &BoxConfig{
+				CPU:    2,
+				MibRAM: 2048,
+				Metadata: map[string]string{
+					"test": "value",
+				},
+			},
+			wantCPU:      2,
+			wantMibRAM:   2048,
+			wantMetadata: 1,
+		},
+		{
+			name: "Default (no CPU/RAM specified)",
+			config: &BoxConfig{
+				Metadata: map[string]string{
+					"env": "testing",
+				},
+			},
+			wantCPU:      0,
+			wantMibRAM:   0,
+			wantMetadata: 1,
+		},
+		{
+			name: "With only CPU",
+			config: &BoxConfig{
+				CPU: 2,
+				Metadata: map[string]string{
+					"test": "value",
+					"env":  "testing",
+				},
+			},
+			wantCPU:      2,
+			wantMibRAM:   0,
+			wantMetadata: 2,
+		},
+		{
+			name: "With only RAM",
+			config: &BoxConfig{
+				MibRAM: 512,
+			},
+			wantCPU:      0,
+			wantMibRAM:   512,
+			wantMetadata: 0,
 		},
 	}
 
-	if len(config.Metadata) != 2 {
-		t.Errorf("Expected 2 metadata entries, got %d", len(config.Metadata))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.config.CPU != tt.wantCPU {
+				t.Errorf("CPU = %v, want %v", tt.config.CPU, tt.wantCPU)
+			}
+			if tt.config.MibRAM != tt.wantMibRAM {
+				t.Errorf("MibRAM = %v, want %v", tt.config.MibRAM, tt.wantMibRAM)
+			}
+			if len(tt.config.Metadata) != tt.wantMetadata {
+				t.Errorf("Metadata entries = %v, want %v", len(tt.config.Metadata), tt.wantMetadata)
+			}
+		})
 	}
+
+	// Test environment variable handling for timeout
+	os.Setenv("TAVOR_BOX_TIMEOUT", "120")
+
+	// Verify timeout environment variable is respected in actual usage
+	// (This would be tested in CreateBox, not directly on config)
 
 	// Dummy test to ensure context is used
 	_ = ctx
