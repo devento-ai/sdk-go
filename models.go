@@ -34,6 +34,7 @@ type Box struct {
 	TerminatedAt *time.Time        `json:"terminated_at,omitempty"`
 	Details      string            `json:"details,omitempty"`
 	InsertedAt   time.Time         `json:"created_at"`
+	Hostname     string            `json:"hostname,omitempty"`
 }
 
 type Command struct {

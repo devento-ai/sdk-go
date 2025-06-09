@@ -323,6 +323,96 @@ highMemory := &tavor.BoxConfig{
 }
 ```
 
+## Web Access
+
+Tavor boxes can expose services to the internet. Each box gets a unique hostname like `uuid.tavor.app`. To access a service running on a specific port inside the VM:
+
+```go
+ctx := context.Background()
+
+box, err := client.CreateBox(ctx, nil)
+if err != nil {
+    log.Fatal(err)
+}
+defer box.Stop(ctx)
+
+if err := box.WaitUntilReady(ctx); err != nil {
+    log.Fatal(err)
+}
+
+// Start a web server on port 8080
+go func() {
+    _, err := box.Run(ctx, "python -m http.server 8080", nil)
+    if err != nil {
+        log.Printf("Server error: %v", err)
+    }
+}()
+
+// Give the server a moment to start
+time.Sleep(2 * time.Second)
+
+// Get the public URL for port 8080
+publicURL, err := box.GetPublicURL(8080)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("Web service is accessible at: %s\n", publicURL)
+// Output: https://8080-uuid.tavor.app
+```
+
+The URL pattern is `https://{port}-{hostname}` where:
+
+- `port` is the port number inside the VM
+- `hostname` is the unique hostname assigned to the box
+
+### Example: Running a Go HTTP Server
+
+```go
+err := client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+    // Create a simple Go web server
+    serverCode := `
+package main
+import (
+    "fmt"
+    "net/http"
+)
+func main() {
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        fmt.Fprintf(w, "<h1>Hello from Tavor!</h1>")
+    })
+    fmt.Println("Server starting on port 3000...")
+    http.ListenAndServe(":3000", nil)
+}
+`
+    if _, err := box.Run(ctx, fmt.Sprintf("echo '%s' > server.go", serverCode), nil); err != nil {
+        return err
+    }
+
+    // Start the server in the background
+    go box.Run(ctx, "go run server.go", &tavor.CommandOptions{
+        OnStdout: func(line string) {
+            fmt.Printf("[SERVER] %s\n", line)
+        },
+    })
+
+    // Wait for server to start
+    time.Sleep(3 * time.Second)
+
+    // Get public URL
+    url, err := box.GetPublicURL(3000)
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("Your Go server is accessible at: %s\n", url)
+
+    // Keep the box alive for demonstration
+    time.Sleep(30 * time.Second)
+    return nil
+}, nil)
+```
+
 ## API Reference
 
 ### Client
@@ -343,6 +433,7 @@ highMemory := &tavor.BoxConfig{
 - `Run(ctx context.Context, command string, opts *CommandOptions) (*CommandResult, error)` - Execute command
 - `Stop(ctx context.Context) error` - Terminate the box
 - `Close(ctx context.Context) error` - Alias for Stop
+- `GetPublicURL(port int) (string, error)` - Get public URL for accessing a service on the specified port
 
 ### Types
 
@@ -383,4 +474,3 @@ type CommandResult struct {
 ## License
 
 MIT License - see LICENSE file for details
-

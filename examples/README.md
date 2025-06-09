@@ -40,6 +40,15 @@ cd python-script
 go run main.go
 ```
 
+### Web Services (`web/`)
+
+Demonstrates how to expose web services running in a Tavor box to the internet with public URLs.
+
+```bash
+cd web
+go run main.go
+```
+
 ### Full Example (`main.go`)
 
 A comprehensive example that demonstrates all SDK features including:

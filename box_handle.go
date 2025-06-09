@@ -191,3 +191,11 @@ func (h *BoxHandle) Stop(ctx context.Context) error {
 func (h *BoxHandle) Close(ctx context.Context) error {
 	return h.Stop(ctx)
 }
+
+// GetPublicURL returns the public web URL for accessing a specific port on the box
+func (h *BoxHandle) GetPublicURL(port int) (string, error) {
+	if h.box.Hostname == "" {
+		return "", fmt.Errorf("box does not have a hostname. Ensure the box is created and running")
+	}
+	return fmt.Sprintf("https://%d-%s", port, h.box.Hostname), nil
+}

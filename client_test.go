@@ -258,3 +258,76 @@ func TestBoxConfig(t *testing.T) {
 	_ = ctx
 	_ = client
 }
+
+func TestBoxHandleGetPublicURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		box       *Box
+		port      int
+		wantURL   string
+		wantError bool
+	}{
+		{
+			name: "Valid hostname",
+			box: &Box{
+				ID:       "box-123",
+				Status:   BoxStatusRunning,
+				Hostname: "abc123.tavor.app",
+			},
+			port:      3000,
+			wantURL:   "https://3000-abc123.tavor.app",
+			wantError: false,
+		},
+		{
+			name: "Different port",
+			box: &Box{
+				ID:       "box-456",
+				Status:   BoxStatusRunning,
+				Hostname: "xyz789.tavor.app",
+			},
+			port:      8080,
+			wantURL:   "https://8080-xyz789.tavor.app",
+			wantError: false,
+		},
+		{
+			name: "No hostname",
+			box: &Box{
+				ID:       "box-789",
+				Status:   BoxStatusRunning,
+				Hostname: "",
+			},
+			port:      3000,
+			wantURL:   "",
+			wantError: true,
+		},
+		{
+			name: "Port 80",
+			box: &Box{
+				ID:       "box-999",
+				Status:   BoxStatusRunning,
+				Hostname: "test123.tavor.app",
+			},
+			port:      80,
+			wantURL:   "https://80-test123.tavor.app",
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, _ := NewClient("sk-tavor-test")
+			handle := newBoxHandle(client, tt.box)
+
+			url, err := handle.GetPublicURL(tt.port)
+
+			if (err != nil) != tt.wantError {
+				t.Errorf("GetPublicURL() error = %v, wantError %v", err, tt.wantError)
+				return
+			}
+
+			if url != tt.wantURL {
+				t.Errorf("GetPublicURL() = %v, want %v", url, tt.wantURL)
+			}
+		})
+	}
+}
