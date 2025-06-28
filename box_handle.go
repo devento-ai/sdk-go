@@ -3,7 +3,9 @@ package tavor
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -96,7 +98,13 @@ func (h *BoxHandle) Run(ctx context.Context, command string, opts *CommandOption
 		opts.PollInterval = 1000 // Default to 1 second
 	}
 
-	req := queueCommandRequest{Command: command}
+	useStreaming := opts.OnStdout != nil || opts.OnStderr != nil
+
+	if useStreaming {
+		return h.runWithStreaming(ctx, command, opts)
+	}
+
+	req := queueCommandRequest{Command: command, Stream: false}
 	var cmdResp queueCommandResponse
 	err := h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s", h.box.ID), req, &cmdResp)
 	if err != nil {
@@ -119,20 +127,11 @@ func (h *BoxHandle) Run(ctx context.Context, command string, opts *CommandOption
 
 		cmd = (*Command)(&statusResp)
 
-		if opts.OnStdout != nil || opts.OnStderr != nil {
-			h.streamOutput(cmd, opts)
-		}
-
 		switch cmd.Status {
 		case CommandStatusDone, CommandStatusFailed, CommandStatusError:
 			exitCode := 0
 			if cmd.ExitCode != nil {
 				exitCode = *cmd.ExitCode
-			}
-
-			// Stream any remaining output
-			if opts.OnStdout != nil || opts.OnStderr != nil {
-				h.streamOutput(cmd, opts)
 			}
 
 			return &CommandResult{
@@ -157,6 +156,145 @@ func (h *BoxHandle) Run(ctx context.Context, command string, opts *CommandOption
 			// Continue polling
 		}
 	}
+}
+
+func (h *BoxHandle) runWithStreaming(ctx context.Context, command string, opts *CommandOptions) (*CommandResult, error) {
+	req := queueCommandRequest{Command: command, Stream: true}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/api/v2/boxes/%s", h.client.baseURL, h.box.ID)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(body)))
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-API-Key", h.client.apiKey)
+
+	resp, err := h.client.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		var errResp errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+			return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("%s", errResp.Error)
+	}
+
+	events := ParseSSE(resp.Body)
+
+	var commandID string
+	var status CommandStatus = CommandStatusQueued
+	var stdout, stderr string
+	var exitCode int
+
+	deadline := time.Now().Add(time.Duration(opts.Timeout) * time.Millisecond)
+
+	for event := range events {
+		if time.Now().After(deadline) {
+			return nil, NewCommandTimeoutError(commandID, opts.Timeout)
+		}
+
+		switch event.Event {
+		case "start":
+			var data SSEStartData
+			if err := ParseSSEData(event, &data); err == nil {
+				commandID = data.CommandID
+			}
+
+		case "output":
+			var data map[string]any
+			if err := ParseSSEData(event, &data); err == nil {
+				if s, ok := data["stdout"].(string); ok && s != "" {
+					stdout += s
+					if opts.OnStdout != nil {
+						lines := strings.Split(s, "\n")
+						for i, line := range lines {
+							if i < len(lines)-1 || line != "" {
+								opts.OnStdout(line)
+							}
+						}
+					}
+				}
+
+				if s, ok := data["stderr"].(string); ok && s != "" {
+					stderr += s
+					if opts.OnStderr != nil {
+						lines := strings.Split(s, "\n")
+						for i, line := range lines {
+							if i < len(lines)-1 || line != "" {
+								opts.OnStderr(line)
+							}
+						}
+					}
+				}
+			}
+
+		case "status":
+			var data map[string]any
+			if err := ParseSSEData(event, &data); err == nil {
+				if s, ok := data["status"].(string); ok {
+					status = CommandStatus(s)
+				}
+				if ec, ok := data["exit_code"].(float64); ok {
+					exitCode = int(ec)
+				}
+			}
+
+		case "end":
+			var data map[string]any
+			if err := ParseSSEData(event, &data); err == nil {
+				if s, ok := data["status"].(string); ok {
+					if s == "error" {
+						status = CommandStatusError
+					} else if s == "timeout" {
+						return nil, NewCommandTimeoutError(commandID, opts.Timeout)
+					}
+				}
+			}
+
+			return &CommandResult{
+				ID:       commandID,
+				BoxID:    h.box.ID,
+				Cmd:      command,
+				Status:   status,
+				Stdout:   stdout,
+				Stderr:   stderr,
+				ExitCode: exitCode,
+			}, nil
+
+		case "error":
+			var data map[string]any
+			if err := ParseSSEData(event, &data); err == nil {
+				if errMsg, ok := data["error"].(string); ok {
+					return nil, fmt.Errorf("command error: %s", errMsg)
+				}
+			}
+			return nil, fmt.Errorf("command error")
+
+		case "timeout":
+			return nil, NewCommandTimeoutError(commandID, opts.Timeout)
+		}
+	}
+
+	// Stream ended without proper completion
+	return &CommandResult{
+		ID:       commandID,
+		BoxID:    h.box.ID,
+		Cmd:      command,
+		Status:   status,
+		Stdout:   stdout,
+		Stderr:   stderr,
+		ExitCode: exitCode,
+	}, nil
 }
 
 func (h *BoxHandle) streamOutput(cmd *Command, opts *CommandOptions) {

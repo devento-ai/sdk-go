@@ -103,6 +103,7 @@ type getBoxResponse struct {
 
 type queueCommandRequest struct {
 	Command string `json:"command"`
+	Stream  bool   `json:"stream,omitempty"`
 }
 
 type queueCommandResponse struct {
