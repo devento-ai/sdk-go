@@ -117,3 +117,17 @@ type errorResponse struct {
 	Message string `json:"message"`
 	Code    string `json:"code,omitempty"`
 }
+
+type ExposedPort struct {
+	ProxyPort  int       `json:"proxy_port"`
+	TargetPort int       `json:"target_port"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type exposePortRequest struct {
+	Port int `json:"port"`
+}
+
+type exposePortResponse struct {
+	Data ExposedPort `json:"data"`
+}

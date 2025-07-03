@@ -337,3 +337,21 @@ func (h *BoxHandle) GetPublicURL(port int) (string, error) {
 	}
 	return fmt.Sprintf("https://%d-%s", port, h.box.Hostname), nil
 }
+
+// ExposePort exposes a port from inside the sandbox to a random external port.
+// This allows external access to services running inside the sandbox.
+//
+// targetPort is the port number inside the sandbox to expose.
+// Returns an ExposedPort containing the proxy_port (external), target_port, and expires_at.
+// Returns an error if the box is not in a running state or if no ports are available.
+func (h *BoxHandle) ExposePort(ctx context.Context, targetPort int) (*ExposedPort, error) {
+	req := exposePortRequest{Port: targetPort}
+	var resp exposePortResponse
+
+	err := h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s/expose_port", h.box.ID), req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.Data, nil
+}

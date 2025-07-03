@@ -366,6 +366,52 @@ The URL pattern is `https://{port}-{hostname}` where:
 - `port` is the port number inside the VM
 - `hostname` is the unique hostname assigned to the box
 
+### Port Exposing
+
+You can dynamically expose ports from inside the sandbox to random external ports. This is useful when you need to access services running inside the sandbox but don't know the port in advance or need multiple services:
+
+```go
+ctx := context.Background()
+
+box, err := client.CreateBox(ctx, nil)
+if err != nil {
+    log.Fatal(err)
+}
+defer box.Stop(ctx)
+
+if err := box.WaitUntilReady(ctx); err != nil {
+    log.Fatal(err)
+}
+
+// Start a service on port 3000 inside the sandbox
+_, err = box.Run(ctx, "python -m http.server 3000 &", nil)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Give the server a moment to start
+time.Sleep(2 * time.Second)
+
+// Expose the internal port 3000 to an external port
+exposedPort, err := box.ExposePort(ctx, 3000)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("Internal port %d is now accessible on external port %d\n",
+    exposedPort.TargetPort, exposedPort.ProxyPort)
+fmt.Printf("Port mapping expires at: %s\n", exposedPort.ExpiresAt.Format(time.RFC3339))
+
+// You can now access the service using the proxy_port
+// For example: http://sandbox-hostname:proxy_port
+```
+
+The `ExposePort` method returns an `ExposedPort` struct with:
+
+- `TargetPort` - The port inside the sandbox (what you requested)
+- `ProxyPort` - The external port assigned by the system
+- `ExpiresAt` - When this port mapping will expire
+
 ### Example: Running a Go HTTP Server
 
 ```go
@@ -434,6 +480,7 @@ func main() {
 - `Stop(ctx context.Context) error` - Terminate the box
 - `Close(ctx context.Context) error` - Alias for Stop
 - `GetPublicURL(port int) (string, error)` - Get public URL for accessing a service on the specified port
+- `ExposePort(ctx context.Context, targetPort int) (*ExposedPort, error)` - Expose a port from inside the sandbox to a random external port
 
 ### Types
 
@@ -460,6 +507,12 @@ type CommandResult struct {
     Stdout   string        // Standard output
     Stderr   string        // Standard error
     ExitCode int           // Exit code
+}
+
+type ExposedPort struct {
+    ProxyPort  int       // External port assigned by the system
+    TargetPort int       // Port inside the sandbox
+    ExpiresAt  time.Time // When this port mapping expires
 }
 ```
 
