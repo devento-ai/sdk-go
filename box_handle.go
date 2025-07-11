@@ -355,3 +355,29 @@ func (h *BoxHandle) ExposePort(ctx context.Context, targetPort int) (*ExposedPor
 
 	return &resp.Data, nil
 }
+
+// Pause pauses the execution of the sandbox.
+// This temporarily stops the sandbox from running while preserving its state.
+// Returns an error if the box cannot be paused.
+func (h *BoxHandle) Pause(ctx context.Context) error {
+	err := h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s/pause", h.box.ID), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	// Refresh the box state after pausing
+	return h.Refresh(ctx)
+}
+
+// Resume resumes the execution of a paused sandbox.
+// This continues the sandbox execution from where it was paused.
+// Returns an error if the box cannot be resumed.
+func (h *BoxHandle) Resume(ctx context.Context) error {
+	err := h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s/resume", h.box.ID), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	// Refresh the box state after resuming
+	return h.Refresh(ctx)
+}

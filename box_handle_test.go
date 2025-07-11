@@ -124,3 +124,187 @@ func TestBoxHandle_ExposePort(t *testing.T) {
 		})
 	}
 }
+
+func TestBoxHandle_Pause(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialStatus BoxStatus
+		pausedStatus  BoxStatus
+		statusCode    int
+		wantErr       bool
+	}{
+		{
+			name:          "Successful pause",
+			initialStatus: BoxStatusRunning,
+			pausedStatus:  BoxStatusStopped,
+			statusCode:    http.StatusOK,
+			wantErr:       false,
+		},
+		{
+			name:          "Failed pause",
+			initialStatus: BoxStatusRunning,
+			statusCode:    http.StatusUnprocessableEntity,
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requestCount := 0
+			// Create test server
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+
+				if requestCount == 1 {
+					// First request should be the pause request
+					if r.Method != "POST" {
+						t.Errorf("Expected POST request, got %s", r.Method)
+					}
+					if r.URL.Path != "/api/v2/boxes/test-box-id/pause" {
+						t.Errorf("Expected path /api/v2/boxes/test-box-id/pause, got %s", r.URL.Path)
+					}
+
+					w.WriteHeader(tt.statusCode)
+					if tt.statusCode != http.StatusOK {
+						json.NewEncoder(w).Encode(errorResponse{
+							Error: "Cannot pause box",
+						})
+					}
+				} else if requestCount == 2 && !tt.wantErr {
+					// Second request should be the refresh request (GET box)
+					if r.Method != "GET" {
+						t.Errorf("Expected GET request for refresh, got %s", r.Method)
+					}
+					if r.URL.Path != "/api/v2/boxes/test-box-id" {
+						t.Errorf("Expected path /api/v2/boxes/test-box-id, got %s", r.URL.Path)
+					}
+
+					w.WriteHeader(http.StatusOK)
+					json.NewEncoder(w).Encode(getBoxResponse{
+						Data: Box{
+							ID:     "test-box-id",
+							Status: tt.pausedStatus,
+						},
+					})
+				}
+			}))
+			defer server.Close()
+
+			// Create client and box handle
+			client, _ := NewClient("test-api-key", WithBaseURL(server.URL))
+			box := &Box{ID: "test-box-id", Status: tt.initialStatus}
+			handle := newBoxHandle(client, box)
+
+			// Test Pause
+			ctx := context.Background()
+			err := handle.Pause(ctx)
+
+			// Check results
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				// Verify that refresh was called
+				if requestCount != 2 {
+					t.Errorf("Expected 2 requests (pause + refresh), got %d", requestCount)
+				}
+			}
+		})
+	}
+}
+
+func TestBoxHandle_Resume(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialStatus BoxStatus
+		resumedStatus BoxStatus
+		statusCode    int
+		wantErr       bool
+	}{
+		{
+			name:          "Successful resume",
+			initialStatus: BoxStatusStopped,
+			resumedStatus: BoxStatusRunning,
+			statusCode:    http.StatusOK,
+			wantErr:       false,
+		},
+		{
+			name:          "Failed resume",
+			initialStatus: BoxStatusStopped,
+			statusCode:    http.StatusUnprocessableEntity,
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requestCount := 0
+			// Create test server
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+
+				if requestCount == 1 {
+					// First request should be the resume request
+					if r.Method != "POST" {
+						t.Errorf("Expected POST request, got %s", r.Method)
+					}
+					if r.URL.Path != "/api/v2/boxes/test-box-id/resume" {
+						t.Errorf("Expected path /api/v2/boxes/test-box-id/resume, got %s", r.URL.Path)
+					}
+
+					w.WriteHeader(tt.statusCode)
+					if tt.statusCode != http.StatusOK {
+						json.NewEncoder(w).Encode(errorResponse{
+							Error: "Cannot resume box",
+						})
+					}
+				} else if requestCount == 2 && !tt.wantErr {
+					// Second request should be the refresh request (GET box)
+					if r.Method != "GET" {
+						t.Errorf("Expected GET request for refresh, got %s", r.Method)
+					}
+					if r.URL.Path != "/api/v2/boxes/test-box-id" {
+						t.Errorf("Expected path /api/v2/boxes/test-box-id, got %s", r.URL.Path)
+					}
+
+					w.WriteHeader(http.StatusOK)
+					json.NewEncoder(w).Encode(getBoxResponse{
+						Data: Box{
+							ID:     "test-box-id",
+							Status: tt.resumedStatus,
+						},
+					})
+				}
+			}))
+			defer server.Close()
+
+			// Create client and box handle
+			client, _ := NewClient("test-api-key", WithBaseURL(server.URL))
+			box := &Box{ID: "test-box-id", Status: tt.initialStatus}
+			handle := newBoxHandle(client, box)
+
+			// Test Resume
+			ctx := context.Background()
+			err := handle.Resume(ctx)
+
+			// Check results
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				// Verify that refresh was called
+				if requestCount != 2 {
+					t.Errorf("Expected 2 requests (resume + refresh), got %d", requestCount)
+				}
+			}
+		})
+	}
+}
