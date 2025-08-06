@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
 	// Create client with debug enabled to see the requests
-	client, err := tavor.NewClient("", tavor.WithDebug(true))
+	client, err := devento.NewClient("", devento.WithDebug(true))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -19,7 +19,7 @@ func main() {
 
 	fmt.Println("Testing command execution with new endpoint format...")
 
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
 		// Test a simple command
 		fmt.Println("\nRunning echo command...")
 		result, err := box.Run(ctx, "echo 'Hello from fixed Go SDK!'", nil)
@@ -32,7 +32,7 @@ func main() {
 
 		// Test command with streaming
 		fmt.Println("\nRunning command with streaming output...")
-		opts := &tavor.CommandOptions{
+		opts := &devento.CommandOptions{
 			OnStdout: func(line string) {
 				fmt.Printf("[STREAM] %s\n", line)
 			},

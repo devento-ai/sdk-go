@@ -6,12 +6,12 @@ import (
 	"log"
 	"time"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
-	// Create a new Tavor client
-	client, err := tavor.NewClient("", tavor.WithDebug(true))
+	// Create a new Devento client
+	client, err := devento.NewClient("", devento.WithDebug(true))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func main() {
 
 	// Create a new sandbox
 	fmt.Println("Creating a new sandbox...")
-	box, err := client.CreateBox(ctx, &tavor.BoxConfig{
+	box, err := client.CreateBox(ctx, &devento.BoxConfig{
 		CPU:    1,
 		MibRAM: 1024,
 	})

@@ -13,7 +13,7 @@ GOVET := $(GOCMD) vet
 GOLINT := golangci-lint
 
 # Package info
-PACKAGE_NAME := github.com/tavor-dev/sdk-go
+PACKAGE_NAME := github.com/devento-ai/sdk-go
 VERSION_FILE := version.go
 CURRENT_VERSION := $(shell grep -oE '[0-9]+\.[0-9]+\.[0-9]+' $(VERSION_FILE) 2>/dev/null || echo "0.1.0")
 
@@ -25,7 +25,7 @@ RED := \033[0;31m
 NC := \033[0m # No Color
 
 help: ## Show this help message
-	@echo -e "${BLUE}Tavor Go SDK - Available Commands${NC}"
+	@echo -e "${BLUE}Devento Go SDK - Available Commands${NC}"
 	@echo -e "${BLUE}==================================${NC}"
 	@awk 'BEGIN {FS = ":.*##"; printf "\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  ${GREEN}%-15s${NC} %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@echo ""
@@ -91,7 +91,7 @@ examples: ## Build and test examples
 check-version: ## Check current version
 	@if [ ! -f $(VERSION_FILE) ]; then \
 		echo -e "${YELLOW}Creating version file...${NC}"; \
-		echo 'package tavor\n\n// Version is the current version of the SDK\nconst Version = "0.1.0"' > $(VERSION_FILE); \
+		echo 'package devento\n\n// Version is the current version of the SDK\nconst Version = "0.1.0"' > $(VERSION_FILE); \
 	fi
 	@echo -e "${BLUE}Current version: ${GREEN}$(CURRENT_VERSION)${NC}"
 
@@ -111,7 +111,7 @@ _bump:
 	if [ -f $(VERSION_FILE) ]; then \
 		sed -i.bak "s/$(CURRENT_VERSION)/$$NEW_VERSION/" $(VERSION_FILE) && rm $(VERSION_FILE).bak; \
 	else \
-		echo -e 'package tavor\n\n// Version is the current version of the SDK\nconst Version = "'$$NEW_VERSION'"' > $(VERSION_FILE); \
+		echo -e 'package devento\n\n// Version is the current version of the SDK\nconst Version = "'$$NEW_VERSION'"' > $(VERSION_FILE); \
 	fi; \
 	echo -e "${GREEN}✓ Version bumped to $$NEW_VERSION${NC}"
 

@@ -1,4 +1,4 @@
-package tavor
+package devento
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultBaseURL = "https://api.tavor.dev"
+	defaultBaseURL = "https://api.devento.ai"
 	defaultTimeout = 30 * time.Second
 )
 
@@ -56,13 +56,13 @@ func WithLogger(logger *slog.Logger) ClientOption {
 
 func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	if apiKey == "" {
-		apiKey = os.Getenv("TAVOR_API_KEY")
+		apiKey = os.Getenv("DEVENTO_API_KEY")
 	}
 	if apiKey == "" {
-		return nil, NewAuthenticationError("API key is required. Pass it as a parameter or set TAVOR_API_KEY environment variable")
+		return nil, NewAuthenticationError("API key is required. Pass it as a parameter or set DEVENTO_API_KEY environment variable")
 	}
 
-	baseURL := os.Getenv("TAVOR_BASE_URL")
+	baseURL := os.Getenv("DEVENTO_BASE_URL")
 	if baseURL == "" {
 		baseURL = defaultBaseURL
 	}
@@ -89,7 +89,7 @@ func (c *Client) CreateBox(ctx context.Context, config *BoxConfig) (*BoxHandle, 
 	}
 
 	if config.Timeout == 0 {
-		if envTimeout := os.Getenv("TAVOR_BOX_TIMEOUT"); envTimeout != "" {
+		if envTimeout := os.Getenv("DEVENTO_BOX_TIMEOUT"); envTimeout != "" {
 			if timeout, err := strconv.Atoi(envTimeout); err == nil {
 				config.Timeout = timeout
 			}
@@ -231,7 +231,7 @@ func (c *Client) WithSandbox(ctx context.Context, fn func(context.Context, *BoxH
 func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", c.apiKey)
-	req.Header.Set("User-Agent", "tavor-go-sdk/"+Version)
+	req.Header.Set("User-Agent", "devento-go-sdk/"+Version)
 }
 
 func (c *Client) handleError(resp *http.Response) error {

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
-	client, err := tavor.NewClient("", tavor.WithDebug(true))
+	client, err := devento.NewClient("", devento.WithDebug(true))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func main() {
 
 	// Example 2: Explicit resource specification for concurrent workloads
 	// Using more resources since we're running multiple commands concurrently
-	config := &tavor.BoxConfig{
+	config := &devento.BoxConfig{
 		CPU:    2,   // 2 CPU cores for better concurrent performance
 		MibRAM: 512, // 512 MiB RAM
 		Metadata: map[string]string{
@@ -41,7 +41,7 @@ func main() {
 	// Run multiple commands concurrently
 	type result struct {
 		name   string
-		output *tavor.CommandResult
+		output *devento.CommandResult
 		err    error
 	}
 

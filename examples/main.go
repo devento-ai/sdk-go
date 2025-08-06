@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
@@ -32,8 +32,8 @@ func main() {
 func basicExample() {
 	fmt.Println("=== Basic Example: Hello World ===")
 
-	// Create client (uses TAVOR_API_KEY env var if not provided)
-	client, err := tavor.NewClient("", tavor.WithDebug(true))
+	// Create client (uses DEVENTO_API_KEY env var if not provided)
+	client, err := devento.NewClient("", devento.WithDebug(true))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,9 +42,9 @@ func basicExample() {
 
 	// Use WithSandbox for automatic cleanup
 	// Using nil config (defaults: 1 CPU, 1024 MiB RAM)
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
 		// Run a simple command
-		result, err := box.Run(ctx, "echo 'Hello from Tavor!'", nil)
+		result, err := box.Run(ctx, "echo 'Hello from Devento!'", nil)
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ func basicExample() {
 func manualExample() {
 	fmt.Println("\n=== Manual Example: Python Script ===")
 
-	client, err := tavor.NewClient("")
+	client, err := devento.NewClient("")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func manualExample() {
 
 	// Create box with custom configuration
 	// Python workloads benefit from more memory
-	config := &tavor.BoxConfig{
+	config := &devento.BoxConfig{
 		CPU:    1,
 		MibRAM: 2048,
 		Metadata: map[string]string{
@@ -130,7 +130,7 @@ print(f"Sum of {numbers} = {total}")
 func streamingExample() {
 	fmt.Println("\n=== Streaming Example: Long Running Command ===")
 
-	client, err := tavor.NewClient("")
+	client, err := devento.NewClient("")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -138,14 +138,14 @@ func streamingExample() {
 	ctx := context.Background()
 
 	// For streaming operations, we might want slightly less memory
-	config := &tavor.BoxConfig{
+	config := &devento.BoxConfig{
 		CPU:    1,   // Default CPU is fine for simple streaming
 		MibRAM: 512, // 512 MiB RAM to handle buffering
 	}
 
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
 		// Run a command with streaming output
-		opts := &tavor.CommandOptions{
+		opts := &devento.CommandOptions{
 			OnStdout: func(line string) {
 				fmt.Printf("[STDOUT] %s\n", line)
 			},
@@ -174,7 +174,7 @@ echo "Task completed!"
 func concurrentExample() {
 	fmt.Println("\n=== Concurrent Example: Multiple Commands ===")
 
-	client, err := tavor.NewClient("")
+	client, err := devento.NewClient("")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func concurrentExample() {
 	ctx := context.Background()
 
 	// For concurrent operations, allocate more resources
-	config := &tavor.BoxConfig{
+	config := &devento.BoxConfig{
 		CPU:    1,   // 2 full CPU cores for parallel execution
 		MibRAM: 512, // 512 MiB RAM
 		Metadata: map[string]string{
@@ -203,7 +203,7 @@ func concurrentExample() {
 	// Run multiple commands concurrently
 	type result struct {
 		name   string
-		output *tavor.CommandResult
+		output *devento.CommandResult
 		err    error
 	}
 
@@ -240,7 +240,7 @@ func concurrentExample() {
 func errorHandlingExample() {
 	fmt.Println("\n=== Error Handling Example ===")
 
-	client, err := tavor.NewClient("")
+	client, err := devento.NewClient("")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func errorHandlingExample() {
 	ctx := context.Background()
 
 	// Error handling doesn't need extra resources - use defaults
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
 		// Command that will fail
 		result, err := box.Run(ctx, "exit 42", nil)
 		if err != nil {
@@ -263,14 +263,14 @@ func errorHandlingExample() {
 		}
 
 		// Command that will timeout
-		opts := &tavor.CommandOptions{
+		opts := &devento.CommandOptions{
 			Timeout: 2000, // 2 seconds
 		}
 
 		_, err = box.Run(ctx, "sleep 10", opts)
 		if err != nil {
 			switch e := err.(type) {
-			case *tavor.CommandTimeoutError:
+			case *devento.CommandTimeoutError:
 				fmt.Printf("Command timed out after %dms\n", e.Timeout)
 			default:
 				return fmt.Errorf("unexpected error: %w", err)
@@ -287,7 +287,7 @@ func errorHandlingExample() {
 func listBoxesExample() {
 	fmt.Println("\n=== List Boxes Example ===")
 
-	client, err := tavor.NewClient("")
+	client, err := devento.NewClient("")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -313,7 +313,7 @@ func listBoxesExample() {
 func resourceAllocationExample() {
 	fmt.Println("\n=== Resource Allocation Strategies ===")
 
-	client, err := tavor.NewClient("")
+	client, err := devento.NewClient("")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -322,7 +322,7 @@ func resourceAllocationExample() {
 
 	// Strategy 1: Minimal resources for simple tasks
 	fmt.Println("\n1. Minimal Configuration (defaults)")
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
 		// Default: 1 CPU, 1024 MiB RAM
 		result, err := box.Run(ctx, "echo 'Minimal resources work great for simple tasks!'", nil)
 		if err != nil {
@@ -337,14 +337,14 @@ func resourceAllocationExample() {
 
 	// Strategy 2: Moderate resources for typical workloads
 	fmt.Println("\n2. Moderate Configuration")
-	moderateConfig := &tavor.BoxConfig{
+	moderateConfig := &devento.BoxConfig{
 		CPU:    1,
 		MibRAM: 512,
 		Metadata: map[string]string{
 			"tier": "moderate",
 		},
 	}
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
 		// Good for most scripting tasks
 		result, err := box.Run(ctx, "free -m | grep Mem", nil)
 		if err != nil {
@@ -359,7 +359,7 @@ func resourceAllocationExample() {
 
 	// Strategy 3: High resources for intensive workloads
 	fmt.Println("\n3. High Performance Configuration")
-	highPerfConfig := &tavor.BoxConfig{
+	highPerfConfig := &devento.BoxConfig{
 		CPU:    2,    // 2 CPU cores
 		MibRAM: 2048, // 2 GiB RAM
 		Metadata: map[string]string{
@@ -393,12 +393,12 @@ func resourceAllocationExample() {
 	fmt.Println("\n4. Dynamic Resource Selection")
 	workloadTypes := []struct {
 		name   string
-		config *tavor.BoxConfig
+		config *devento.BoxConfig
 		desc   string
 	}{
 		{
 			name: "web-scraping",
-			config: &tavor.BoxConfig{
+			config: &devento.BoxConfig{
 				CPU:    1,   // Minimal CPU
 				MibRAM: 256, // Moderate RAM for DOM parsing
 			},
@@ -406,7 +406,7 @@ func resourceAllocationExample() {
 		},
 		{
 			name: "ml-inference",
-			config: &tavor.BoxConfig{
+			config: &devento.BoxConfig{
 				CPU:    2,    // Multiple cores for parallel processing
 				MibRAM: 4096, // 4 GiB RAM for models
 			},
@@ -414,7 +414,7 @@ func resourceAllocationExample() {
 		},
 		{
 			name: "build-tasks",
-			config: &tavor.BoxConfig{
+			config: &devento.BoxConfig{
 				CPU:    1,    // Single core is often sufficient
 				MibRAM: 1024, // 1 GiB RAM for compilation
 			},

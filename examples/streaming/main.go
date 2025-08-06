@@ -6,26 +6,26 @@ import (
 	"log"
 	"os"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
 	fmt.Println("Testing SSE streaming implementation...\n")
 
-	client, err := tavor.NewClient(os.Getenv("TAVOR_API_KEY"))
+	client, err := devento.NewClient(os.Getenv("DEVENTO_API_KEY"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	ctx := context.Background()
 
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
 		fmt.Printf("Box %s is ready!\n\n", box.ID())
 
 		fmt.Println("Test 1: Basic streaming output")
 		fmt.Println("==============================")
 
-		opts := &tavor.CommandOptions{
+		opts := &devento.CommandOptions{
 			OnStdout: func(line string) {
 				fmt.Printf("[STDOUT] %s\n", line)
 			},
@@ -44,7 +44,7 @@ func main() {
 		fmt.Println("Test 2: Mixed stdout and stderr")
 		fmt.Println("================================")
 
-		opts2 := &tavor.CommandOptions{
+		opts2 := &devento.CommandOptions{
 			OnStdout: func(line string) {
 				fmt.Printf("[OUT] %s\n", line)
 			},
@@ -74,7 +74,7 @@ func main() {
 
 		fmt.Println("\nAll tests completed successfully!")
 		return nil
-	}, &tavor.BoxConfig{
+	}, &devento.BoxConfig{
 		CPU:    1,
 		MibRAM: 1024,
 	})

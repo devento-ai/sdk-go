@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
-	// Create client (uses TAVOR_API_KEY env var if not provided)
-	client, err := tavor.NewClient("", tavor.WithDebug(true))
+	// Create client (uses DEVENTO_API_KEY env var if not provided)
+	client, err := devento.NewClient("", devento.WithDebug(true))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func main() {
 	ctx := context.Background()
 
 	// Example: Running a simple web server with public access
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
 		fmt.Println("Starting web server example...")
 
 		// Create a simple Python web server
@@ -28,7 +28,7 @@ func main() {
 		htmlContent := `<!DOCTYPE html>
 <html>
 <head>
-    <title>Tavor Web Demo</title>
+    <title>Devento Web Demo</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         h1 { color: #333; }
@@ -36,9 +36,9 @@ func main() {
     </style>
 </head>
 <body>
-    <h1>Welcome to Tavor!</h1>
+    <h1>Welcome to Devento!</h1>
     <div class="info">
-        <p>This web server is running inside a Tavor cloud sandbox.</p>
+        <p>This web server is running inside a Devento cloud sandbox.</p>
         <p>The sandbox provides a secure, isolated environment for running code.</p>
         <p>Current time: <span id="time"></span></p>
     </div>
@@ -58,7 +58,7 @@ func main() {
 
 		// Run server in background
 		go func() {
-			opts := &tavor.CommandOptions{
+			opts := &devento.CommandOptions{
 				OnStdout: func(line string) {
 					fmt.Printf("[SERVER] %s\n", line)
 				},
@@ -98,7 +98,7 @@ func main() {
 		time.Sleep(60 * time.Second)
 
 		return nil
-	}, &tavor.BoxConfig{
+	}, &devento.BoxConfig{
 		CPU:     1,
 		MibRAM:  512,
 		Timeout: 120, // 2 minutes

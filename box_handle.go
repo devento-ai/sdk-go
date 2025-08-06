@@ -1,4 +1,4 @@
-package tavor
+package devento
 
 import (
 	"bufio"
@@ -52,7 +52,7 @@ func (h *BoxHandle) WaitUntilReady(ctx context.Context) error {
 	timeout := 60 * time.Second
 	pollInterval := 1 * time.Second
 
-	if envTimeout := os.Getenv("TAVOR_BOX_TIMEOUT"); envTimeout != "" {
+	if envTimeout := os.Getenv("DEVENTO_BOX_TIMEOUT"); envTimeout != "" {
 		if t, err := strconv.Atoi(envTimeout); err == nil {
 			timeout = time.Duration(t) * time.Second
 		}

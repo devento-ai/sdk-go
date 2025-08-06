@@ -1,16 +1,11 @@
-# Tavor Go SDK
+# Devento Go SDK
 
-> [!WARNING]
-> **This package is being renamed to `github.com/devento-ai/sdk-go`**. Please use the new package instead as this one will no longer be maintained. Check out [github.com/devento-ai/sdk-go](https://github.com/devento-ai/sdk-go).
-> 
-> The current library can still be used with `TAVOR_BASE_URL="https://api.devento.ai"` but will receive no further updates.
-
-The official Go SDK for [Tavor](https://tavor.dev), a cloud sandbox platform that provides secure, isolated execution environments.
+The official Go SDK for [Devento](https://devento.ai), a cloud sandbox platform that provides secure, isolated execution environments.
 
 ## Installation
 
 ```bash
-go get github.com/tavor-dev/sdk-go
+go get github.com/devento-ai/sdk-go
 ```
 
 ## Quick Start
@@ -23,12 +18,12 @@ import (
     "fmt"
     "log"
 
-    tavor "github.com/tavor-dev/sdk-go"
+    devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
-    // Create client (uses TAVOR_API_KEY env var)
-    client, err := tavor.NewClient("")
+    // Create client (uses DEVENTO_API_KEY env var)
+    client, err := devento.NewClient("")
     if err != nil {
         log.Fatal(err)
     }
@@ -36,8 +31,8 @@ func main() {
     ctx := context.Background()
 
     // Use WithSandbox for automatic cleanup
-    err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
-        result, err := box.Run(ctx, "echo 'Hello from Tavor!'", nil)
+    err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
+        result, err := box.Run(ctx, "echo 'Hello from Devento!'", nil)
         if err != nil {
             return err
         }
@@ -59,13 +54,13 @@ The SDK requires an API key for authentication. You can provide it in two ways:
 1. **Environment Variable** (recommended):
 
    ```bash
-   export TAVOR_API_KEY="sk-tavor-xxx"
+   export DEVENTO_API_KEY="sk-devento-xxx"
    ```
 
 2. **Direct Parameter**:
 
    ```go
-   client, err := tavor.NewClient("sk-tavor-xxx")
+   client, err := devento.NewClient("sk-devento-xxx")
    ```
 
 ## Configuration
@@ -76,10 +71,10 @@ The SDK requires an API key for authentication. You can provide it in two ways:
 httpClient := &http.Client{
     Timeout: 60 * time.Second,
 }
-client, err := tavor.NewClient("",
-    tavor.WithHTTPClient(httpClient),
-    tavor.WithBaseURL("https://custom.api.tavor.dev"),
-    tavor.WithDebug(true),
+client, err := devento.NewClient("",
+    devento.WithHTTPClient(httpClient),
+    devento.WithBaseURL("https://custom.api.devento.ai"),
+    devento.WithDebug(true),
 )
 ```
 
@@ -89,29 +84,28 @@ The SDK uses Go's standard `log/slog` package for structured logging. You can en
 
 ```go
 // Enable built-in debug logging
-client, err := tavor.NewClient("", tavor.WithDebug(true))
+client, err := devento.NewClient("", devento.WithDebug(true))
 
 // Use a custom JSON logger
 jsonLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
     Level: slog.LevelDebug,
 }))
-client, err := tavor.NewClient("", tavor.WithLogger(jsonLogger))
+client, err := devento.NewClient("", devento.WithLogger(jsonLogger))
 
 // Use a custom logger with additional context
 customLogger := slog.New(slog.NewTextHandler(os.Stdout, nil)).With(
     "service", "my-app",
     "version", "1.0.0",
 )
-client, err := tavor.NewClient("", tavor.WithLogger(customLogger))
+client, err := devento.NewClient("", devento.WithLogger(customLogger))
 ```
 
 ### Environment Variables
 
-- `TAVOR_API_KEY` - API key for authentication
-- `TAVOR_BASE_URL` - Base URL for API (defaults to <https://api.tavor.dev>)
-- `TAVOR_BOX_CPU` - Default CPU cores (e.g., 1, 2, integers only)
-- `TAVOR_BOX_MIB_RAM` - Default RAM in MiB (e.g., 128, 256, 512, 1024, 2048)
-- `TAVOR_BOX_TIMEOUT` - Default box timeout in seconds
+- `DEVENTO_API_KEY` - API key for authentication
+- `DEVENTO_BOX_CPU` - Default CPU cores (e.g., 1, 2, integers only)
+- `DEVENTO_BOX_MIB_RAM` - Default RAM in MiB (e.g., 128, 256, 512, 1024, 2048)
+- `DEVENTO_BOX_TIMEOUT` - Default box timeout in seconds
 
 ## Usage Examples
 
@@ -140,7 +134,7 @@ fmt.Printf("Working directory: %s\n", result.Stdout)
 ### Using WithSandbox (Automatic Cleanup)
 
 ```go
-err := client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+err := client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
     // Box is automatically created and cleaned up
     result, err := box.Run(ctx, "ls -la", nil)
     if err != nil {
@@ -163,7 +157,7 @@ if err != nil {
 defer box.Stop(ctx)
 
 // Option 2: Specify custom resources
-config := &tavor.BoxConfig{
+config := &devento.BoxConfig{
     CPU:     2,    // 2 CPU cores
     MibRAM:  2048, // 2 GiB RAM
     Timeout: 3600, // 1 hour
@@ -183,7 +177,7 @@ defer box.Stop(ctx)
 ### Streaming Output
 
 ```go
-opts := &tavor.CommandOptions{
+opts := &devento.CommandOptions{
     OnStdout: func(line string) {
         fmt.Printf("[OUT] %s\n", line)
     },
@@ -201,14 +195,14 @@ if err != nil {
 ### Command Timeouts
 
 ```go
-opts := &tavor.CommandOptions{
+opts := &devento.CommandOptions{
     Timeout: 5000, // 5 seconds in milliseconds
 }
 
 result, err := box.Run(ctx, "sleep 10", opts)
 if err != nil {
     switch e := err.(type) {
-    case *tavor.CommandTimeoutError:
+    case *devento.CommandTimeoutError:
         fmt.Printf("Command timed out after %dms\n", e.Timeout)
     default:
         log.Fatal(err)
@@ -219,7 +213,7 @@ if err != nil {
 ### Concurrent Commands
 
 ```go
-results := make(chan *tavor.CommandResult, 3)
+results := make(chan *devento.CommandResult, 3)
 errors := make(chan error, 3)
 
 commands := []string{"hostname", "date", "uptime"}
@@ -279,15 +273,15 @@ The SDK provides specific error types for common scenarios:
 result, err := box.Run(ctx, "some-command", nil)
 if err != nil {
     switch e := err.(type) {
-    case *tavor.AuthenticationError:
+    case *devento.AuthenticationError:
         log.Fatal("Invalid API key")
-    case *tavor.BoxNotFoundError:
+    case *devento.BoxNotFoundError:
         log.Printf("Box %s not found", e.BoxID)
-    case *tavor.CommandTimeoutError:
+    case *devento.CommandTimeoutError:
         log.Printf("Command %s timed out", e.CommandID)
-    case *tavor.RateLimitError:
+    case *devento.RateLimitError:
         log.Printf("Rate limited, retry after %d seconds", e.RetryAfter)
-    case *tavor.APIError:
+    case *devento.APIError:
         log.Printf("API error: %s (status %d)", e.Message, e.StatusCode)
     default:
         log.Printf("Unknown error: %v", err)
@@ -297,7 +291,7 @@ if err != nil {
 
 ## Resource Configuration
 
-Tavor allows you to configure CPU and RAM resources for your boxes:
+Devento allows you to configure CPU and RAM resources for your boxes:
 
 ### Default Resources
 
@@ -310,19 +304,19 @@ If you don't specify resources, boxes are created with minimal defaults:
 
 ```go
 // Standard (defaults) - for typical workloads
-standard := &tavor.BoxConfig{
+standard := &devento.BoxConfig{
     CPU:    1,    // 1 CPU core
     MibRAM: 1024, // 1024 MiB RAM
 }
 
 // Performance - for demanding tasks
-performance := &tavor.BoxConfig{
+performance := &devento.BoxConfig{
     CPU:    2,    // 2 CPU cores
     MibRAM: 2048, // 2 GiB RAM
 }
 
 // High Memory - for data processing
-highMemory := &tavor.BoxConfig{
+highMemory := &devento.BoxConfig{
     CPU:    1,    // 1 CPU core
     MibRAM: 2048, // 2 GiB RAM
 }
@@ -330,7 +324,7 @@ highMemory := &tavor.BoxConfig{
 
 ## Web Access
 
-Tavor boxes can expose services to the internet. Each box gets a unique hostname like `uuid.tavor.app`. To access a service running on a specific port inside the VM:
+Devento boxes can expose services to the internet. Each box gets a unique hostname like `uuid.deven.to`. To access a service running on a specific port inside the VM:
 
 ```go
 ctx := context.Background()
@@ -363,7 +357,7 @@ if err != nil {
 }
 
 fmt.Printf("Web service is accessible at: %s\n", publicURL)
-// Output: https://8080-uuid.tavor.app
+// Output: https://8080-uuid.deven.to
 ```
 
 The URL pattern is `https://{port}-{hostname}` where:
@@ -420,7 +414,7 @@ The `ExposePort` method returns an `ExposedPort` struct with:
 ### Example: Running a Go HTTP Server
 
 ```go
-err := client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
+err := client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
     // Create a simple Go web server
     serverCode := `
 package main
@@ -430,7 +424,7 @@ import (
 )
 func main() {
     http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintf(w, "<h1>Hello from Tavor!</h1>")
+        fmt.Fprintf(w, "<h1>Hello from Devento!</h1>")
     })
     fmt.Println("Server starting on port 3000...")
     http.ListenAndServe(":3000", nil)
@@ -441,7 +435,7 @@ func main() {
     }
 
     // Start the server in the background
-    go box.Run(ctx, "go run server.go", &tavor.CommandOptions{
+    go box.Run(ctx, "go run server.go", &devento.CommandOptions{
         OnStdout: func(line string) {
             fmt.Printf("[SERVER] %s\n", line)
         },

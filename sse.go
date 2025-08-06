@@ -1,4 +1,4 @@
-package tavor
+package devento
 
 import (
 	"bufio"

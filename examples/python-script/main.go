@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
-	client, err := tavor.NewClient("")
+	client, err := devento.NewClient("")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -18,7 +18,7 @@ func main() {
 
 	// Create box with custom configuration
 	// Since we're running Python scripts, we might want specific resources
-	config := &tavor.BoxConfig{
+	config := &devento.BoxConfig{
 		CPU:    1,   // 1 CPU cores
 		MibRAM: 256, // 256 MiB RAM for Python runtime
 		Metadata: map[string]string{

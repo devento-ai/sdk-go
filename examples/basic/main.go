@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
-	// Create client (uses TAVOR_API_KEY env var if not provided)
-	client, err := tavor.NewClient("", tavor.WithDebug(true))
+	// Create client (uses DEVENTO_API_KEY env var if not provided)
+	client, err := devento.NewClient("", devento.WithDebug(true))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -18,8 +18,8 @@ func main() {
 	ctx := context.Background()
 
 	// Use WithSandbox for automatic cleanup
-	err = client.WithSandbox(ctx, func(ctx context.Context, box *tavor.BoxHandle) error {
-		result, err := box.Run(ctx, "echo 'Hello from Tavor!'", nil)
+	err = client.WithSandbox(ctx, func(ctx context.Context, box *devento.BoxHandle) error {
+		result, err := box.Run(ctx, "echo 'Hello from Devento!'", nil)
 		if err != nil {
 			return err
 		}

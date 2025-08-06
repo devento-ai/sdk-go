@@ -1,4 +1,4 @@
-package tavor
+package devento
 
 import (
 	"context"
@@ -9,11 +9,11 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
-	originalAPIKey := os.Getenv("TAVOR_API_KEY")
-	originalBaseURL := os.Getenv("TAVOR_BASE_URL")
+	originalAPIKey := os.Getenv("DEVENTO_API_KEY")
+	originalBaseURL := os.Getenv("DEVENTO_BASE_URL")
 	defer func() {
-		os.Setenv("TAVOR_API_KEY", originalAPIKey)
-		os.Setenv("TAVOR_BASE_URL", originalBaseURL)
+		os.Setenv("DEVENTO_API_KEY", originalAPIKey)
+		os.Setenv("DEVENTO_BASE_URL", originalBaseURL)
 	}()
 
 	tests := []struct {
@@ -27,14 +27,14 @@ func TestNewClient(t *testing.T) {
 	}{
 		{
 			name:        "Direct API key",
-			apiKey:      "sk-tavor-test123",
+			apiKey:      "sk-devento-test123",
 			wantErr:     false,
 			wantBaseURL: defaultBaseURL,
 		},
 		{
 			name:        "API key from environment",
 			apiKey:      "",
-			envAPIKey:   "sk-tavor-env123",
+			envAPIKey:   "sk-devento-env123",
 			wantErr:     false,
 			wantBaseURL: defaultBaseURL,
 		},
@@ -47,23 +47,23 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name:        "Custom base URL from env",
-			apiKey:      "sk-tavor-test",
-			envBaseURL:  "https://custom.tavor.dev",
+			apiKey:      "sk-devento-test",
+			envBaseURL:  "https://custom.devento.ai",
 			wantErr:     false,
-			wantBaseURL: "https://custom.tavor.dev",
+			wantBaseURL: "https://custom.devento.ai",
 		},
 		{
 			name:   "Custom base URL from option",
-			apiKey: "sk-tavor-test",
+			apiKey: "sk-devento-test",
 			opts: []ClientOption{
-				WithBaseURL("https://option.tavor.dev"),
+				WithBaseURL("https://option.devento.ai"),
 			},
 			wantErr:     false,
-			wantBaseURL: "https://option.tavor.dev",
+			wantBaseURL: "https://option.devento.ai",
 		},
 		{
 			name:   "Custom HTTP client",
-			apiKey: "sk-tavor-test",
+			apiKey: "sk-devento-test",
 			opts: []ClientOption{
 				WithHTTPClient(&http.Client{Timeout: 60 * time.Second}),
 			},
@@ -74,8 +74,8 @@ func TestNewClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("TAVOR_API_KEY", tt.envAPIKey)
-			os.Setenv("TAVOR_BASE_URL", tt.envBaseURL)
+			os.Setenv("DEVENTO_API_KEY", tt.envAPIKey)
+			os.Setenv("DEVENTO_BASE_URL", tt.envBaseURL)
 
 			client, err := NewClient(tt.apiKey, tt.opts...)
 
@@ -166,12 +166,12 @@ func TestErrorTypes(t *testing.T) {
 }
 
 func TestBoxConfig(t *testing.T) {
-	originalTimeout := os.Getenv("TAVOR_BOX_TIMEOUT")
+	originalTimeout := os.Getenv("DEVENTO_BOX_TIMEOUT")
 	defer func() {
-		os.Setenv("TAVOR_BOX_TIMEOUT", originalTimeout)
+		os.Setenv("DEVENTO_BOX_TIMEOUT", originalTimeout)
 	}()
 
-	client, err := NewClient("sk-tavor-test")
+	client, err := NewClient("sk-devento-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestBoxConfig(t *testing.T) {
 	}
 
 	// Test environment variable handling for timeout
-	os.Setenv("TAVOR_BOX_TIMEOUT", "120")
+	os.Setenv("DEVENTO_BOX_TIMEOUT", "120")
 
 	// Verify timeout environment variable is respected in actual usage
 	// (This would be tested in CreateBox, not directly on config)
@@ -272,10 +272,10 @@ func TestBoxHandleGetPublicURL(t *testing.T) {
 			box: &Box{
 				ID:       "box-123",
 				Status:   BoxStatusRunning,
-				Hostname: "abc123.tavor.app",
+				Hostname: "abc123.deven.to",
 			},
 			port:      3000,
-			wantURL:   "https://3000-abc123.tavor.app",
+			wantURL:   "https://3000-abc123.deven.to",
 			wantError: false,
 		},
 		{
@@ -283,10 +283,10 @@ func TestBoxHandleGetPublicURL(t *testing.T) {
 			box: &Box{
 				ID:       "box-456",
 				Status:   BoxStatusRunning,
-				Hostname: "xyz789.tavor.app",
+				Hostname: "xyz789.deven.to",
 			},
 			port:      8080,
-			wantURL:   "https://8080-xyz789.tavor.app",
+			wantURL:   "https://8080-xyz789.deven.to",
 			wantError: false,
 		},
 		{
@@ -305,17 +305,17 @@ func TestBoxHandleGetPublicURL(t *testing.T) {
 			box: &Box{
 				ID:       "box-999",
 				Status:   BoxStatusRunning,
-				Hostname: "test123.tavor.app",
+				Hostname: "test123.deven.to",
 			},
 			port:      80,
-			wantURL:   "https://80-test123.tavor.app",
+			wantURL:   "https://80-test123.deven.to",
 			wantError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, _ := NewClient("sk-tavor-test")
+			client, _ := NewClient("sk-devento-test")
 			handle := newBoxHandle(client, tt.box)
 
 			url, err := handle.GetPublicURL(tt.port)

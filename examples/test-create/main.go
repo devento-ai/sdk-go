@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log"
 
-	tavor "github.com/tavor-dev/sdk-go"
+	devento "github.com/devento-ai/sdk-go"
 )
 
 func main() {
 	// Create client with debug enabled to see the response
-	client, err := tavor.NewClient("", tavor.WithDebug(true))
+	client, err := devento.NewClient("", devento.WithDebug(true))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -24,7 +24,7 @@ func main() {
 	explicitExample(ctx, client)
 }
 
-func defaultExample(ctx context.Context, client *tavor.Client) {
+func defaultExample(ctx context.Context, client *devento.Client) {
 	fmt.Println("\n=== Example 1: Default Resources ===")
 
 	// Create a box with minimal resources (using defaults)
@@ -54,11 +54,11 @@ func defaultExample(ctx context.Context, client *tavor.Client) {
 	fmt.Printf("Box is ready! Status: %s\n", box.Status())
 }
 
-func explicitExample(ctx context.Context, client *tavor.Client) {
+func explicitExample(ctx context.Context, client *devento.Client) {
 	fmt.Println("\n=== Example 2: Explicit Resources ===")
 
 	// Create a box with explicit resource configuration
-	config := &tavor.BoxConfig{
+	config := &devento.BoxConfig{
 		CPU:    2,    // 2 CPU cores
 		MibRAM: 1024, // 1 GiB RAM (1024 MiB)
 		Metadata: map[string]string{
