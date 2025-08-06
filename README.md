@@ -1,5 +1,10 @@
 # Tavor Go SDK
 
+> [!WARNING]
+> **This package is being renamed to `github.com/devento-ai/sdk-go`**. Please use the new package instead as this one will no longer be maintained. Check out [github.com/devento-ai/sdk-go](https://github.com/devento-ai/sdk-go).
+> 
+> The current library can still be used with `TAVOR_BASE_URL="https://api.devento.ai"` but will receive no further updates.
+
 The official Go SDK for [Tavor](https://tavor.dev), a cloud sandbox platform that provides secure, isolated execution environments.
 
 ## Installation
