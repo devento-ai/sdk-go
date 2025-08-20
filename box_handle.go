@@ -104,7 +104,8 @@ func (h *BoxHandle) Run(ctx context.Context, command string, opts *CommandOption
 		return h.runWithStreaming(ctx, command, opts)
 	}
 
-	req := queueCommandRequest{Command: command, Stream: false}
+	timeoutMs := opts.Timeout
+	req := queueCommandRequest{Command: command, Stream: false, TimeoutMs: &timeoutMs}
 	var cmdResp queueCommandResponse
 	err := h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s", h.box.ID), req, &cmdResp)
 	if err != nil {
@@ -146,6 +147,8 @@ func (h *BoxHandle) Run(ctx context.Context, command string, opts *CommandOption
 		}
 
 		if time.Now().After(deadline) {
+			// Try to cancel the command
+			_ = h.cancelCommand(ctx, commandID, "timeout")
 			return nil, NewCommandTimeoutError(cmd.ID, opts.Timeout)
 		}
 
@@ -159,7 +162,8 @@ func (h *BoxHandle) Run(ctx context.Context, command string, opts *CommandOption
 }
 
 func (h *BoxHandle) runWithStreaming(ctx context.Context, command string, opts *CommandOptions) (*CommandResult, error) {
-	req := queueCommandRequest{Command: command, Stream: true}
+	timeoutMs := opts.Timeout
+	req := queueCommandRequest{Command: command, Stream: true, TimeoutMs: &timeoutMs}
 
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -200,6 +204,9 @@ func (h *BoxHandle) runWithStreaming(ctx context.Context, command string, opts *
 
 	for event := range events {
 		if time.Now().After(deadline) {
+			if commandID != "" {
+				_ = h.cancelCommand(ctx, commandID, "timeout")
+			}
 			return nil, NewCommandTimeoutError(commandID, opts.Timeout)
 		}
 
@@ -380,4 +387,13 @@ func (h *BoxHandle) Resume(ctx context.Context) error {
 
 	// Refresh the box state after resuming
 	return h.Refresh(ctx)
+}
+
+// cancelCommand cancels a running command
+func (h *BoxHandle) cancelCommand(ctx context.Context, commandID string, reason string) error {
+	req := map[string]string{}
+	if reason != "" {
+		req["reason"] = reason
+	}
+	return h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s/commands/%s/cancel", h.box.ID, commandID), req, nil)
 }

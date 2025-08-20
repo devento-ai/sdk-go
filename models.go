@@ -102,8 +102,9 @@ type getBoxResponse struct {
 }
 
 type queueCommandRequest struct {
-	Command string `json:"command"`
-	Stream  bool   `json:"stream,omitempty"`
+	Command   string `json:"command"`
+	Stream    bool   `json:"stream,omitempty"`
+	TimeoutMs *int   `json:"timeout_ms,omitempty"`
 }
 
 type queueCommandResponse struct {
