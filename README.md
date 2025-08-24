@@ -411,6 +411,90 @@ The `ExposePort` method returns an `ExposedPort` struct with:
 - `ProxyPort` - The external port assigned by the system
 - `ExpiresAt` - When this port mapping will expire
 
+### Snapshots
+
+Snapshots allow you to save the state of a sandbox and restore it later. This is useful for creating checkpoints, backing up configurations, or reverting changes:
+
+```go
+ctx := context.Background()
+
+box, err := client.CreateBox(ctx, &devento.BoxConfig{
+    CPU:    2,
+    MibRAM: 2048,
+})
+if err != nil {
+    log.Fatal(err)
+}
+defer box.Stop(ctx)
+
+if err := box.WaitUntilReady(ctx); err != nil {
+    log.Fatal(err)
+}
+
+// Create a snapshot before making changes
+snapshot, err := box.CreateSnapshot(ctx, "clean-state", "")
+if err != nil {
+    log.Fatal(err)
+}
+
+// Wait for snapshot to be ready
+if err := box.WaitSnapshotReady(ctx, snapshot.ID, 5*time.Minute, time.Second); err != nil {
+    log.Fatal(err)
+}
+
+// Make some changes
+_, err = box.Run(ctx, "apt-get update && apt-get -y install nginx", nil)
+if err != nil {
+    log.Fatal(err)
+}
+
+// List all snapshots
+snapshots, err := box.ListSnapshots(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+for _, s := range snapshots {
+    fmt.Printf("Snapshot %s: %s - %s\n", s.ID, s.Label, s.Status)
+}
+
+// Restore to the previous state
+_, err = box.RestoreSnapshot(ctx, snapshot.ID)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Wait for box to be running again after restore
+if err := box.WaitUntilReady(ctx); err != nil {
+    log.Fatal(err)
+}
+
+// The changes are gone - nginx is not installed anymore
+result, _ := box.Run(ctx, "which nginx", nil)
+if result.ExitCode == 0 {
+    fmt.Println("nginx found")
+} else {
+    fmt.Println("nginx not found")
+}
+```
+
+Available snapshot methods:
+
+- `ListSnapshots(ctx)` - List all snapshots for the box
+- `GetSnapshot(ctx, snapshotID)` - Get details of a specific snapshot
+- `CreateSnapshot(ctx, label, description)` - Create a new snapshot
+- `RestoreSnapshot(ctx, snapshotID)` - Restore the box from a snapshot
+- `DeleteSnapshot(ctx, snapshotID)` - Delete a snapshot
+- `WaitSnapshotReady(ctx, snapshotID, timeout, pollInterval)` - Wait for a snapshot to be ready
+
+Snapshot states:
+- `SnapshotStatusCreating` - Snapshot is being created
+- `SnapshotStatusReady` - Snapshot is ready to use
+- `SnapshotStatusRestoring` - Snapshot is being restored
+- `SnapshotStatusDeleted` - Snapshot has been deleted
+- `SnapshotStatusError` - Snapshot creation failed
+
+Note: Snapshots can only be created when the box is in `BoxStatusRunning` or `BoxStatusPaused` state.
+
 ### Example: Running a Go HTTP Server
 
 ```go

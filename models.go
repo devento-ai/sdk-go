@@ -10,6 +10,7 @@ const (
 	BoxStatusQueued     BoxStatus = "queued"
 	BoxStatusStarting   BoxStatus = "starting"
 	BoxStatusRunning    BoxStatus = "running"
+	BoxStatusPaused     BoxStatus = "paused"
 	BoxStatusStopping   BoxStatus = "stopping"
 	BoxStatusStopped    BoxStatus = "stopped"
 	BoxStatusFailed     BoxStatus = "failed"
@@ -131,4 +132,34 @@ type exposePortRequest struct {
 
 type exposePortResponse struct {
 	Data ExposedPort `json:"data"`
+}
+
+type SnapshotStatus string
+
+const (
+	SnapshotStatusCreating  SnapshotStatus = "creating"
+	SnapshotStatusReady     SnapshotStatus = "ready"
+	SnapshotStatusRestoring SnapshotStatus = "restoring"
+	SnapshotStatusDeleted   SnapshotStatus = "deleted"
+	SnapshotStatusError     SnapshotStatus = "error"
+)
+
+type Snapshot struct {
+	ID             string         `json:"id"`
+	BoxID          string         `json:"box_id"`
+	SnapshotType   string         `json:"snapshot_type"`
+	Status         SnapshotStatus `json:"status"`
+	Label          string         `json:"label,omitempty"`
+	SizeBytes      *int64         `json:"size_bytes,omitempty"`
+	ChecksumSHA256 string         `json:"checksum_sha256,omitempty"`
+	CreatedAt      time.Time      `json:"created_at"`
+	OrchestratorID string         `json:"orchestrator_id"`
+}
+
+type listSnapshotsResponse struct {
+	Data []Snapshot `json:"data"`
+}
+
+type getSnapshotResponse struct {
+	Data Snapshot `json:"data"`
 }

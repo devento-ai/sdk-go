@@ -397,3 +397,89 @@ func (h *BoxHandle) cancelCommand(ctx context.Context, commandID string, reason 
 	}
 	return h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s/commands/%s/cancel", h.box.ID, commandID), req, nil)
 }
+
+// ListSnapshots lists all snapshots for this box
+func (h *BoxHandle) ListSnapshots(ctx context.Context) ([]Snapshot, error) {
+	var resp listSnapshotsResponse
+	if err := h.client.doRequest(ctx, "GET", fmt.Sprintf("/api/v2/boxes/%s/snapshots", h.box.ID), nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
+// GetSnapshot fetches a specific snapshot by ID
+func (h *BoxHandle) GetSnapshot(ctx context.Context, snapshotID string) (*Snapshot, error) {
+	var resp getSnapshotResponse
+	if err := h.client.doRequest(ctx, "GET", fmt.Sprintf("/api/v2/boxes/%s/snapshots/%s", h.box.ID, snapshotID), nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp.Data, nil
+}
+
+// CreateSnapshot creates a new snapshot of the box
+func (h *BoxHandle) CreateSnapshot(ctx context.Context, label, description string) (*Snapshot, error) {
+	payload := map[string]string{}
+	if label != "" {
+		payload["label"] = label
+	}
+	if description != "" {
+		payload["description"] = description
+	}
+
+	var resp getSnapshotResponse
+	if err := h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s/snapshots", h.box.ID), payload, &resp); err != nil {
+		return nil, err
+	}
+	return &resp.Data, nil
+}
+
+// RestoreSnapshot restores the box from a snapshot
+func (h *BoxHandle) RestoreSnapshot(ctx context.Context, snapshotID string) (*Snapshot, error) {
+	body := map[string]string{"snapshot_id": snapshotID}
+	var resp getSnapshotResponse
+	if err := h.client.doRequest(ctx, "POST", fmt.Sprintf("/api/v2/boxes/%s/restore", h.box.ID), body, &resp); err != nil {
+		return nil, err
+	}
+	return &resp.Data, nil
+}
+
+// DeleteSnapshot deletes a snapshot
+func (h *BoxHandle) DeleteSnapshot(ctx context.Context, snapshotID string) (*Snapshot, error) {
+	var resp getSnapshotResponse
+	if err := h.client.doRequest(ctx, "DELETE", fmt.Sprintf("/api/v2/boxes/%s/snapshots/%s", h.box.ID, snapshotID), nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp.Data, nil
+}
+
+// WaitSnapshotReady waits for a snapshot to become ready
+func (h *BoxHandle) WaitSnapshotReady(ctx context.Context, snapshotID string, timeout time.Duration, pollInterval time.Duration) error {
+	if timeout == 0 {
+		timeout = 5 * time.Minute
+	}
+	if pollInterval == 0 {
+		pollInterval = 1 * time.Second
+	}
+
+	deadline := time.Now().Add(timeout)
+	for {
+		s, err := h.GetSnapshot(ctx, snapshotID)
+		if err != nil {
+			return err
+		}
+		switch s.Status {
+		case SnapshotStatusReady:
+			return nil
+		case SnapshotStatusError, SnapshotStatusDeleted:
+			return NewAPIError(422, fmt.Sprintf("snapshot %s ended with status: %s", snapshotID, s.Status))
+		}
+		if time.Now().After(deadline) {
+			return NewCommandTimeoutError(snapshotID, int(timeout.Milliseconds()))
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(pollInterval):
+		}
+	}
+}
