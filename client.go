@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -203,6 +204,50 @@ func (c *Client) GetBox(ctx context.Context, boxID string) (*BoxHandle, error) {
 	}
 
 	return newBoxHandle(c, &boxResp.Data), nil
+}
+
+func (c *Client) ListDomains(ctx context.Context) (*DomainsResponse, error) {
+	var resp DomainsResponse
+	if err := c.doRequest(ctx, http.MethodGet, "/api/v2/domains", nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (c *Client) GetDomain(ctx context.Context, domainID string) (*DomainResponse, error) {
+	var resp DomainResponse
+	if err := c.doRequest(ctx, http.MethodGet, "/api/v2/domains/"+domainID, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (c *Client) CreateDomain(ctx context.Context, req *CreateDomainRequest) (*DomainResponse, error) {
+	if req == nil {
+		return nil, errors.New("create domain request cannot be nil")
+	}
+
+	var resp DomainResponse
+	if err := c.doRequest(ctx, http.MethodPost, "/api/v2/domains", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (c *Client) UpdateDomain(ctx context.Context, domainID string, req *UpdateDomainRequest) (*DomainResponse, error) {
+	if req == nil {
+		return nil, errors.New("update domain request cannot be nil")
+	}
+
+	var resp DomainResponse
+	if err := c.doRequest(ctx, http.MethodPatch, "/api/v2/domains/"+domainID, req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (c *Client) DeleteDomain(ctx context.Context, domainID string) error {
+	return c.doRequest(ctx, http.MethodDelete, "/api/v2/domains/"+domainID, nil, nil)
 }
 
 func (c *Client) WithSandbox(ctx context.Context, fn func(context.Context, *BoxHandle) error, config *BoxConfig) error {

@@ -2,7 +2,9 @@ package devento
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -330,4 +332,263 @@ func TestBoxHandleGetPublicURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClientDomains(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	slug := "app"
+	targetPort := 4000
+	boxID := "box_123"
+
+	domain := Domain{
+		ID:         "dom_123",
+		Hostname:   "app.deven.to",
+		Slug:       &slug,
+		Kind:       DomainKindManaged,
+		Status:     DomainStatusActive,
+		TargetPort: &targetPort,
+		BoxID:      &boxID,
+		VerificationPayload: map[string]any{
+			"cname": "app.deven.to",
+		},
+		VerificationErrors: map[string]any{},
+		InsertedAt:         now,
+		UpdatedAt:          now,
+	}
+
+	meta := DomainMeta{
+		ManagedSuffix: "deven.to",
+		CNAMETarget:   "edge.deven.to",
+	}
+
+	t.Run("List domains", func(t *testing.T) {
+		response := DomainsResponse{
+			Data: []Domain{domain},
+			Meta: meta,
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				t.Fatalf("expected GET method, got %s", r.Method)
+			}
+			if r.URL.Path != "/api/v2/domains" {
+				t.Fatalf("unexpected path: %s", r.URL.Path)
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
+		}))
+		defer server.Close()
+
+		client, err := NewClient("test-key", WithBaseURL(server.URL))
+		if err != nil {
+			t.Fatalf("NewClient error: %v", err)
+		}
+
+		resp, err := client.ListDomains(context.Background())
+		if err != nil {
+			t.Fatalf("ListDomains error: %v", err)
+		}
+
+		if len(resp.Data) != 1 {
+			t.Fatalf("expected 1 domain, got %d", len(resp.Data))
+		}
+		if resp.Meta.ManagedSuffix != meta.ManagedSuffix {
+			t.Fatalf("unexpected managed suffix: %s", resp.Meta.ManagedSuffix)
+		}
+	})
+
+	t.Run("Get domain", func(t *testing.T) {
+		response := DomainResponse{
+			Data: domain,
+			Meta: meta,
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				t.Fatalf("expected GET method, got %s", r.Method)
+			}
+			if r.URL.Path != "/api/v2/domains/dom_123" {
+				t.Fatalf("unexpected path: %s", r.URL.Path)
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
+		}))
+		defer server.Close()
+
+		client, err := NewClient("test-key", WithBaseURL(server.URL))
+		if err != nil {
+			t.Fatalf("NewClient error: %v", err)
+		}
+
+		resp, err := client.GetDomain(context.Background(), "dom_123")
+		if err != nil {
+			t.Fatalf("GetDomain error: %v", err)
+		}
+		if resp.Data.ID != "dom_123" {
+			t.Fatalf("unexpected domain id: %s", resp.Data.ID)
+		}
+	})
+
+	t.Run("Create domain omits undefined fields", func(t *testing.T) {
+		response := DomainResponse{
+			Data: domain,
+			Meta: meta,
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				t.Fatalf("expected POST method, got %s", r.Method)
+			}
+			if r.URL.Path != "/api/v2/domains" {
+				t.Fatalf("unexpected path: %s", r.URL.Path)
+			}
+
+			var payload map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("failed to decode request: %v", err)
+			}
+
+			if payload["kind"] != string(DomainKindManaged) {
+				t.Fatalf("unexpected kind: %v", payload["kind"])
+			}
+			if _, exists := payload["hostname"]; exists {
+				t.Fatalf("expected hostname to be omitted, but was present")
+			}
+			if slugVal, ok := payload["slug"].(string); !ok || slugVal != "app" {
+				t.Fatalf("unexpected slug: %v", payload["slug"])
+			}
+			if portVal, ok := payload["target_port"].(float64); !ok || int(portVal) != targetPort {
+				t.Fatalf("unexpected target_port: %v", payload["target_port"])
+			}
+			if boxVal, ok := payload["box_id"].(string); !ok || boxVal != boxID {
+				t.Fatalf("unexpected box_id: %v", payload["box_id"])
+			}
+
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
+		}))
+		defer server.Close()
+
+		client, err := NewClient("test-key", WithBaseURL(server.URL))
+		if err != nil {
+			t.Fatalf("NewClient error: %v", err)
+		}
+
+		req := &CreateDomainRequest{
+			Kind:       DomainKindManaged,
+			Slug:       &slug,
+			TargetPort: &targetPort,
+			BoxID:      &boxID,
+		}
+
+		resp, err := client.CreateDomain(context.Background(), req)
+		if err != nil {
+			t.Fatalf("CreateDomain error: %v", err)
+		}
+		if resp.Data.Kind != DomainKindManaged {
+			t.Fatalf("unexpected domain kind: %s", resp.Data.Kind)
+		}
+	})
+
+	t.Run("Update domain supports null", func(t *testing.T) {
+		response := DomainResponse{
+			Data: domain,
+			Meta: meta,
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPatch {
+				t.Fatalf("expected PATCH method, got %s", r.Method)
+			}
+			if r.URL.Path != "/api/v2/domains/dom_123" {
+				t.Fatalf("unexpected path: %s", r.URL.Path)
+			}
+
+			var payload map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("failed to decode request: %v", err)
+			}
+
+			if payload["status"] != string(DomainStatusActive) {
+				t.Fatalf("unexpected status: %v", payload["status"])
+			}
+			if val, exists := payload["target_port"]; !exists || val != nil {
+				t.Fatalf("expected target_port to be explicitly null, got %v", val)
+			}
+			if val, exists := payload["box_id"]; !exists || val != nil {
+				t.Fatalf("expected box_id to be explicitly null, got %v", val)
+			}
+
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
+		}))
+		defer server.Close()
+
+		client, err := NewClient("test-key", WithBaseURL(server.URL))
+		if err != nil {
+			t.Fatalf("NewClient error: %v", err)
+		}
+
+		req := &UpdateDomainRequest{
+			Status:     NewUpdateField(DomainStatusActive),
+			TargetPort: NullUpdateField[int](),
+			BoxID:      NullUpdateField[string](),
+		}
+
+		resp, err := client.UpdateDomain(context.Background(), "dom_123", req)
+		if err != nil {
+			t.Fatalf("UpdateDomain error: %v", err)
+		}
+		if resp.Data.ID != "dom_123" {
+			t.Fatalf("unexpected domain id: %s", resp.Data.ID)
+		}
+	})
+
+	t.Run("Delete domain", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodDelete {
+				t.Fatalf("expected DELETE method, got %s", r.Method)
+			}
+			if r.URL.Path != "/api/v2/domains/dom_123" {
+				t.Fatalf("unexpected path: %s", r.URL.Path)
+			}
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer server.Close()
+
+		client, err := NewClient("test-key", WithBaseURL(server.URL))
+		if err != nil {
+			t.Fatalf("NewClient error: %v", err)
+		}
+
+		if err := client.DeleteDomain(context.Background(), "dom_123"); err != nil {
+			t.Fatalf("DeleteDomain error: %v", err)
+		}
+	})
+
+	t.Run("Create domain nil request", func(t *testing.T) {
+		client, err := NewClient("test-key", WithBaseURL("https://example.com"))
+		if err != nil {
+			t.Fatalf("NewClient error: %v", err)
+		}
+
+		if _, err := client.CreateDomain(context.Background(), nil); err == nil {
+			t.Fatalf("expected error for nil request")
+		}
+	})
+
+	t.Run("Update domain nil request", func(t *testing.T) {
+		client, err := NewClient("test-key", WithBaseURL("https://example.com"))
+		if err != nil {
+			t.Fatalf("NewClient error: %v", err)
+		}
+
+		if _, err := client.UpdateDomain(context.Background(), "dom_123", nil); err == nil {
+			t.Fatalf("expected error for nil request")
+		}
+	})
 }

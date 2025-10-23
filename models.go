@@ -163,3 +163,67 @@ type listSnapshotsResponse struct {
 type getSnapshotResponse struct {
 	Data Snapshot `json:"data"`
 }
+
+type DomainKind string
+
+const (
+	DomainKindManaged DomainKind = "managed"
+	DomainKindCustom  DomainKind = "custom"
+)
+
+type DomainStatus string
+
+const (
+	DomainStatusPendingDNS DomainStatus = "pending_dns"
+	DomainStatusPendingSSL DomainStatus = "pending_ssl"
+	DomainStatusActive     DomainStatus = "active"
+	DomainStatusFailed     DomainStatus = "failed"
+	DomainStatusDisabled   DomainStatus = "disabled"
+)
+
+type Domain struct {
+	ID                  string         `json:"id"`
+	Hostname            string         `json:"hostname"`
+	Slug                *string        `json:"slug"`
+	Kind                DomainKind     `json:"kind"`
+	Status              DomainStatus   `json:"status"`
+	TargetPort          *int           `json:"target_port"`
+	BoxID               *string        `json:"box_id"`
+	CloudflareID        *string        `json:"cloudflare_id"`
+	VerificationPayload map[string]any `json:"verification_payload"`
+	VerificationErrors  map[string]any `json:"verification_errors"`
+	InsertedAt          time.Time      `json:"inserted_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+}
+
+type DomainMeta struct {
+	ManagedSuffix string `json:"managed_suffix"`
+	CNAMETarget   string `json:"cname_target"`
+}
+
+type DomainsResponse struct {
+	Data []Domain   `json:"data"`
+	Meta DomainMeta `json:"meta"`
+}
+
+type DomainResponse struct {
+	Data Domain     `json:"data"`
+	Meta DomainMeta `json:"meta"`
+}
+
+type CreateDomainRequest struct {
+	Kind       DomainKind    `json:"kind"`
+	Slug       *string       `json:"slug,omitempty"`
+	Hostname   *string       `json:"hostname,omitempty"`
+	Status     *DomainStatus `json:"status,omitempty"`
+	TargetPort *int          `json:"target_port,omitempty"`
+	BoxID      *string       `json:"box_id,omitempty"`
+}
+
+type UpdateDomainRequest struct {
+	Slug       UpdateField[string]       `json:"slug,omitempty"`
+	Hostname   UpdateField[string]       `json:"hostname,omitempty"`
+	Status     UpdateField[DomainStatus] `json:"status,omitempty"`
+	TargetPort UpdateField[int]          `json:"target_port,omitempty"`
+	BoxID      UpdateField[string]       `json:"box_id,omitempty"`
+}
