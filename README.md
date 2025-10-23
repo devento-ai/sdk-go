@@ -365,6 +365,73 @@ The URL pattern is `https://{port}-{hostname}` where:
 - `port` is the port number inside the VM
 - `hostname` is the unique hostname assigned to the box
 
+### Domain Management
+
+Manage managed and custom hostnames for your boxes through the Domains API:
+
+```go
+ctx := context.Background()
+
+// List existing domains
+domainsResp, err := client.ListDomains(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Managed domains use the suffix: %s\n", domainsResp.Meta.ManagedSuffix)
+
+// Create a managed domain (slug + managed suffix)
+slug := "my-app"
+boxID := "box_123"
+targetPort := 3000
+managedDomain, err := client.CreateDomain(ctx, &devento.CreateDomainRequest{
+    Kind:       devento.DomainKindManaged,
+    Slug:       &slug,
+    BoxID:      &boxID,
+    TargetPort: &targetPort,
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Managed hostname: %s\n", managedDomain.Data.Hostname)
+
+// Create a custom domain (requires CNAME pointing to edge.deven.to)
+hostname := "api.example.com"
+_, err = client.CreateDomain(ctx, &devento.CreateDomainRequest{
+    Kind:       devento.DomainKindCustom,
+    Hostname:   &hostname,
+    BoxID:      &boxID,
+    TargetPort: &targetPort,
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+// Update routing target (supports explicit nulls via helper constructors)
+newBoxID := "box_456"
+_, err = client.UpdateDomain(ctx, managedDomain.Data.ID, &devento.UpdateDomainRequest{
+    BoxID:      devento.NewUpdateField(newBoxID),
+    TargetPort: devento.NewUpdateField(8080),
+    Status:     devento.NewUpdateField(devento.DomainStatusPendingDNS),
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+// Clear optional fields by setting them to null
+_, err = client.UpdateDomain(ctx, managedDomain.Data.ID, &devento.UpdateDomainRequest{
+    TargetPort: devento.NullUpdateField[int](),
+    BoxID:      devento.NullUpdateField[string](),
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+// Delete a domain when no longer needed
+if err := client.DeleteDomain(ctx, managedDomain.Data.ID); err != nil {
+    log.Fatal(err)
+}
+```
+
 ### Port Exposing
 
 You can dynamically expose ports from inside the sandbox to random external ports. This is useful when you need to access services running inside the sandbox but don't know the port in advance or need multiple services:
