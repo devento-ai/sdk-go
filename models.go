@@ -28,14 +28,15 @@ const (
 )
 
 type Box struct {
-	ID           string            `json:"id"`
-	Status       BoxStatus         `json:"status"`
-	Metadata     map[string]string `json:"metadata,omitempty"`
-	StartedAt    *time.Time        `json:"started_at,omitempty"`
-	TerminatedAt *time.Time        `json:"terminated_at,omitempty"`
-	Details      string            `json:"details,omitempty"`
-	InsertedAt   time.Time         `json:"created_at"`
-	Hostname     string            `json:"hostname,omitempty"`
+	ID               string            `json:"id"`
+	Status           BoxStatus         `json:"status"`
+	Metadata         map[string]string `json:"metadata,omitempty"`
+	StartedAt        *time.Time        `json:"started_at,omitempty"`
+	TerminatedAt     *time.Time        `json:"terminated_at,omitempty"`
+	Details          string            `json:"details,omitempty"`
+	InsertedAt       time.Time         `json:"created_at"`
+	Hostname         string            `json:"hostname,omitempty"`
+	WatermarkEnabled *bool             `json:"watermark_enabled,omitempty"`
 }
 
 type Command struct {
@@ -61,10 +62,11 @@ type CommandResult struct {
 }
 
 type BoxConfig struct {
-	CPU      int               `json:"cpu,omitempty"`     // Number of CPU cores
-	MibRAM   int               `json:"mib_ram,omitempty"` // RAM in MiB
-	Timeout  int               `json:"timeout,omitempty"` // seconds
-	Metadata map[string]string `json:"metadata,omitempty"`
+	CPU              int               `json:"cpu,omitempty"`     // Number of CPU cores
+	MibRAM           int               `json:"mib_ram,omitempty"` // RAM in MiB
+	Timeout          int               `json:"timeout,omitempty"` // seconds
+	Metadata         map[string]string `json:"metadata,omitempty"`
+	WatermarkEnabled *bool             `json:"watermark_enabled,omitempty"` // Enable/disable watermark
 }
 
 type CommandOptions struct {
@@ -85,9 +87,10 @@ type Organization struct {
 // API request/response types
 
 type createBoxRequest struct {
-	CPU      int               `json:"cpu,omitempty"`
-	MibRAM   int               `json:"mib_ram,omitempty"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	CPU              int               `json:"cpu,omitempty"`
+	MibRAM           int               `json:"mib_ram,omitempty"`
+	Metadata         map[string]string `json:"metadata,omitempty"`
+	WatermarkEnabled *bool             `json:"watermark_enabled,omitempty"`
 }
 
 type createBoxResponse struct {

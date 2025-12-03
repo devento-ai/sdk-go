@@ -261,6 +261,97 @@ func TestBoxConfig(t *testing.T) {
 	_ = client
 }
 
+func TestBoxConfigWatermarkEnabled(t *testing.T) {
+	tests := []struct {
+		name             string
+		watermarkEnabled *bool
+		want             *bool
+	}{
+		{
+			name:             "Watermark enabled",
+			watermarkEnabled: func() *bool { b := true; return &b }(),
+			want:             func() *bool { b := true; return &b }(),
+		},
+		{
+			name:             "Watermark disabled",
+			watermarkEnabled: func() *bool { b := false; return &b }(),
+			want:             func() *bool { b := false; return &b }(),
+		},
+		{
+			name:             "Watermark not set",
+			watermarkEnabled: nil,
+			want:             nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &BoxConfig{
+				WatermarkEnabled: tt.watermarkEnabled,
+			}
+
+			if tt.want == nil {
+				if config.WatermarkEnabled != nil {
+					t.Errorf("WatermarkEnabled = %v, want nil", *config.WatermarkEnabled)
+				}
+			} else {
+				if config.WatermarkEnabled == nil {
+					t.Errorf("WatermarkEnabled = nil, want %v", *tt.want)
+				} else if *config.WatermarkEnabled != *tt.want {
+					t.Errorf("WatermarkEnabled = %v, want %v", *config.WatermarkEnabled, *tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestCreateBoxWithWatermarkEnabled(t *testing.T) {
+	watermarkEnabled := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("expected POST method, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v2/boxes" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+
+		var payload map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("failed to decode request: %v", err)
+		}
+
+		// Verify watermark_enabled is in the payload
+		if val, exists := payload["watermark_enabled"]; !exists {
+			t.Fatalf("expected watermark_enabled in payload")
+		} else if val != false {
+			t.Fatalf("expected watermark_enabled to be false, got %v", val)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(createBoxResponse{ID: "box-watermark-test"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient("test-key", WithBaseURL(server.URL))
+	if err != nil {
+		t.Fatalf("NewClient error: %v", err)
+	}
+
+	config := &BoxConfig{
+		WatermarkEnabled: &watermarkEnabled,
+	}
+
+	box, err := client.CreateBox(context.Background(), config)
+	if err != nil {
+		t.Fatalf("CreateBox error: %v", err)
+	}
+
+	if box.ID() != "box-watermark-test" {
+		t.Fatalf("unexpected box ID: %s", box.ID())
+	}
+}
+
 func TestBoxHandleGetPublicURL(t *testing.T) {
 	tests := []struct {
 		name      string

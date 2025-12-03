@@ -38,6 +38,12 @@ func (h *BoxHandle) Metadata() map[string]string {
 	return h.box.Metadata
 }
 
+// WatermarkEnabled returns whether the watermark is enabled for this sandbox's web previews.
+// Returns nil if the value is not set.
+func (h *BoxHandle) WatermarkEnabled() *bool {
+	return h.box.WatermarkEnabled
+}
+
 func (h *BoxHandle) Refresh(ctx context.Context) error {
 	var resp getBoxResponse
 	err := h.client.doRequest(ctx, "GET", "/api/v2/boxes/"+h.box.ID, nil, &resp)
@@ -386,6 +392,19 @@ func (h *BoxHandle) Resume(ctx context.Context) error {
 	}
 
 	// Refresh the box state after resuming
+	return h.Refresh(ctx)
+}
+
+// SetWatermark sets whether the watermark should be displayed for this sandbox's web previews.
+// Returns an error if the watermark setting cannot be updated.
+func (h *BoxHandle) SetWatermark(ctx context.Context, enabled bool) error {
+	payload := map[string]bool{"watermark_enabled": enabled}
+	err := h.client.doRequest(ctx, "PATCH", fmt.Sprintf("/api/v2/boxes/%s", h.box.ID), payload, nil)
+	if err != nil {
+		return err
+	}
+
+	// Refresh the box state after updating
 	return h.Refresh(ctx)
 }
 

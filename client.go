@@ -98,9 +98,10 @@ func (c *Client) CreateBox(ctx context.Context, config *BoxConfig) (*BoxHandle, 
 	}
 
 	req := createBoxRequest{
-		Metadata: config.Metadata,
-		CPU:      config.CPU,
-		MibRAM:   config.MibRAM,
+		Metadata:         config.Metadata,
+		CPU:              config.CPU,
+		MibRAM:           config.MibRAM,
+		WatermarkEnabled: config.WatermarkEnabled,
 	}
 
 	body, err := json.Marshal(req)

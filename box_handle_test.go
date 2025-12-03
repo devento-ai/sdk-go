@@ -308,3 +308,163 @@ func TestBoxHandle_Resume(t *testing.T) {
 		})
 	}
 }
+
+func TestBoxHandle_WatermarkEnabled(t *testing.T) {
+	tests := []struct {
+		name             string
+		watermarkEnabled *bool
+		want             *bool
+	}{
+		{
+			name:             "Watermark enabled",
+			watermarkEnabled: func() *bool { b := true; return &b }(),
+			want:             func() *bool { b := true; return &b }(),
+		},
+		{
+			name:             "Watermark disabled",
+			watermarkEnabled: func() *bool { b := false; return &b }(),
+			want:             func() *bool { b := false; return &b }(),
+		},
+		{
+			name:             "Watermark not set",
+			watermarkEnabled: nil,
+			want:             nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, _ := NewClient("sk-devento-test")
+			box := &Box{
+				ID:               "box-123",
+				Status:           BoxStatusRunning,
+				WatermarkEnabled: tt.watermarkEnabled,
+			}
+			handle := newBoxHandle(client, box)
+
+			result := handle.WatermarkEnabled()
+
+			if tt.want == nil {
+				if result != nil {
+					t.Errorf("WatermarkEnabled() = %v, want nil", *result)
+				}
+			} else {
+				if result == nil {
+					t.Errorf("WatermarkEnabled() = nil, want %v", *tt.want)
+				} else if *result != *tt.want {
+					t.Errorf("WatermarkEnabled() = %v, want %v", *result, *tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestBoxHandle_SetWatermark(t *testing.T) {
+	tests := []struct {
+		name       string
+		enabled    bool
+		statusCode int
+		wantErr    bool
+	}{
+		{
+			name:       "Successfully enable watermark",
+			enabled:    true,
+			statusCode: http.StatusOK,
+			wantErr:    false,
+		},
+		{
+			name:       "Successfully disable watermark",
+			enabled:    false,
+			statusCode: http.StatusOK,
+			wantErr:    false,
+		},
+		{
+			name:       "Failed to set watermark",
+			enabled:    true,
+			statusCode: http.StatusUnprocessableEntity,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requestCount := 0
+			// Create test server
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+
+				if requestCount == 1 {
+					// First request should be the PATCH request
+					if r.Method != "PATCH" {
+						t.Errorf("Expected PATCH request, got %s", r.Method)
+					}
+					if r.URL.Path != "/api/v2/boxes/test-box-id" {
+						t.Errorf("Expected path /api/v2/boxes/test-box-id, got %s", r.URL.Path)
+					}
+
+					// Check request body
+					var reqBody map[string]bool
+					if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+						t.Errorf("Failed to decode request body: %v", err)
+					}
+					if reqBody["watermark_enabled"] != tt.enabled {
+						t.Errorf("Expected watermark_enabled %v, got %v", tt.enabled, reqBody["watermark_enabled"])
+					}
+
+					w.WriteHeader(tt.statusCode)
+					if tt.statusCode != http.StatusOK {
+						json.NewEncoder(w).Encode(errorResponse{
+							Error: "Cannot update watermark",
+						})
+					}
+				} else if requestCount == 2 && !tt.wantErr {
+					// Second request should be the refresh request (GET box)
+					if r.Method != "GET" {
+						t.Errorf("Expected GET request for refresh, got %s", r.Method)
+					}
+					if r.URL.Path != "/api/v2/boxes/test-box-id" {
+						t.Errorf("Expected path /api/v2/boxes/test-box-id, got %s", r.URL.Path)
+					}
+
+					w.WriteHeader(http.StatusOK)
+					json.NewEncoder(w).Encode(getBoxResponse{
+						Data: Box{
+							ID:               "test-box-id",
+							Status:           BoxStatusRunning,
+							WatermarkEnabled: &tt.enabled,
+						},
+					})
+				}
+			}))
+			defer server.Close()
+
+			// Create client and box handle
+			client, _ := NewClient("test-api-key", WithBaseURL(server.URL))
+			box := &Box{ID: "test-box-id", Status: BoxStatusRunning}
+			handle := newBoxHandle(client, box)
+
+			// Test SetWatermark
+			ctx := context.Background()
+			err := handle.SetWatermark(ctx, tt.enabled)
+
+			// Check results
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				// Verify that refresh was called
+				if requestCount != 2 {
+					t.Errorf("Expected 2 requests (set_watermark + refresh), got %d", requestCount)
+				}
+				// Verify watermark was updated
+				if handle.WatermarkEnabled() == nil || *handle.WatermarkEnabled() != tt.enabled {
+					t.Errorf("WatermarkEnabled() = %v, want %v", handle.WatermarkEnabled(), tt.enabled)
+				}
+			}
+		})
+	}
+}
